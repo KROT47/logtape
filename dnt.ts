@@ -5,7 +5,7 @@ await emptyDir("./npm");
 
 await build({
   package: {
-    name: "@logtape/logtape",
+    name: "@metamorph/logtape",
     version: Deno.args[0] ?? metadata.version,
     description: "Simple logging library with zero dependencies for " +
       "Deno/Node.js/Bun/browsers",
