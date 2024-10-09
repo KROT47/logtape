@@ -1,4 +1,8 @@
-import type { Category, CategoryList } from "./category.ts";
+import {
+  type Category,
+  type CategoryList,
+  getCategoryList,
+} from "./category.ts";
 import type { Filter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
 import type {
@@ -427,7 +431,6 @@ export class LoggerImpl implements Logger {
       (globalThis as GlobalRootLoggerRegistry)[globalRootLoggerSymbol] =
         rootLogger;
     }
-    if (typeof category === "string") return rootLogger.getChild(category);
     if (category.length === 0) return rootLogger;
     return rootLogger.getChild(category);
   }
@@ -444,7 +447,8 @@ export class LoggerImpl implements Logger {
   getChild(
     subcategory: Category,
   ): LoggerImpl {
-    const name = typeof subcategory === "string" ? subcategory : subcategory[0];
+    const subcategoryList = getCategoryList(subcategory);
+    const name = subcategoryList[0];
     const childRef = this.children[name];
     let child: LoggerImpl | undefined = childRef instanceof LoggerImpl
       ? childRef
@@ -455,10 +459,10 @@ export class LoggerImpl implements Logger {
         ? new WeakRef(child)
         : child;
     }
-    if (typeof subcategory === "string" || subcategory.length === 1) {
+    if (subcategoryList.length === 1) {
       return child;
     }
-    return child.getChild(subcategory.slice(1));
+    return child.getChild(subcategoryList.slice(1));
   }
 
   /**
