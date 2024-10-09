@@ -42,20 +42,30 @@ export interface Logger {
    *
    * ```typescript
    * const logger = getLogger("category");
+   * const logger2 = logger.getChild("");
+   * const logger3 = logger.getChild([""]);
+   * const logger4 = logger.getChild(null);
+   * const logger5 = logger.getChild(undefined);
    * const subLogger = logger.getChild("sub-category");
+   * const subLogger2 = logger.getChild(['', "sub-category"]);
    * ```
    *
    * The above code is equivalent to:
    *
    * ```typescript
    * const logger = getLogger("category");
+   * const logger2 = getLogger("category");
+   * const logger3 = getLogger("category");
+   * const logger4 = getLogger("category");
+   * const logger5 = getLogger("category");
    * const subLogger = getLogger(["category", "sub-category"]);
+   * const subLogger2 = getLogger(["category", "sub-category"]);
    * ```
    *
    * @param subcategory The subcategory.
    * @returns The child logger.
    */
-  getChild(subcategory: Category): Logger;
+  getChild(subcategory: Category | null | undefined): Logger;
 
   /**
    * Get a logger with contextual properties.  This is useful for
@@ -445,15 +455,18 @@ export class LoggerImpl implements Logger {
   }
 
   getChild(
-    subcategory: Category,
+    subcategory: Category | null | undefined,
   ): LoggerImpl {
+    if (!subcategory) return this;
     const subcategoryList = getCategoryList(subcategory);
     const name = subcategoryList[0];
     const childRef = this.children[name];
     let child: LoggerImpl | undefined = childRef instanceof LoggerImpl
       ? childRef
       : childRef?.deref();
-    if (child == null) {
+    if (!name) {
+      child = this;
+    } else if (child == null) {
       child = new LoggerImpl(this, [...this.category, name]);
       this.children[name] = "WeakRef" in globalThis
         ? new WeakRef(child)
@@ -713,7 +726,7 @@ export class LoggerCtx implements Logger {
   }
 
   getChild(
-    subcategory: Category,
+    subcategory: Category | null | undefined,
   ): Logger {
     return this.logger.getChild(subcategory).with(this.properties);
   }
