@@ -1,3 +1,4 @@
+import type { Category } from "./category.ts";
 import { type FilterLike, toFilter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
 import { LoggerImpl } from "./logger.ts";
@@ -49,7 +50,7 @@ export interface LoggerConfig<
    * The category of the logger.  If a string, it is equivalent to an array
    * with one element.
    */
-  category: string | string[];
+  category: Category;
 
   /**
    * The sink identifiers to use.
