@@ -2,7 +2,7 @@ import {
   type Category,
   type CategoryList,
   getCategoryList,
-  MaybeCategory,
+  type MaybeCategory,
 } from "./category.ts";
 import type { Filter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";

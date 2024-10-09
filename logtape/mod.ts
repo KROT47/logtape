@@ -1,4 +1,9 @@
-export { type Category, type CategoryList } from "./category.ts";
+export {
+  type Category,
+  type CategoryList,
+  type MaybeCategory,
+  type MaybeCategoryList,
+} from "./category.ts";
 export {
   type Config,
   ConfigError,
