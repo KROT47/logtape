@@ -1,6 +1,6 @@
 {
   "name": "@metamorph/logtape",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "license": "MIT",
   "exports": "./logtape/mod.ts",
   "imports": {
@@ -32,6 +32,6 @@
     "hooks:install": "deno run --allow-read=deno.json,.git/hooks/ --allow-write=.git/hooks/ jsr:@hongminhee/deno-task-hooks",
     "hooks:pre-commit": "deno task check",
     "hooks:pre-push": "deno task test",
-    "npm:publish": "deno task test && cd npm && npm publish --access=public"
+    "npm:publish": "deno task test && deno task dnt && cd npm && npm publish --access=public"
   }
 }
