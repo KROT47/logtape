@@ -27,6 +27,17 @@ Deno.test("withFilter()", () => {
   assertEquals(buffer, [warning, error, fatal]);
 });
 
+Deno.test("withFilter()", () => {
+  const buffer: LogRecord[] = [];
+  const sink = withFilter(buffer.push.bind(buffer), "warning");
+  sink(debug);
+  sink(info);
+  sink(warning);
+  sink(error);
+  sink(fatal);
+  assertEquals(buffer, [warning, error, fatal]);
+});
+
 interface ConsoleMock extends Console {
   history(): unknown[];
 }
