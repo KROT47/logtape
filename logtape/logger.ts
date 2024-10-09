@@ -2,6 +2,7 @@ import {
   type Category,
   type CategoryList,
   getCategoryList,
+  MaybeCategory,
 } from "./category.ts";
 import type { Filter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
@@ -65,7 +66,7 @@ export interface Logger {
    * @param subcategory The subcategory.
    * @returns The child logger.
    */
-  getChild(subcategory: Category | null | undefined): Logger;
+  getChild(subcategory: MaybeCategory): Logger;
 
   /**
    * Get a logger with contextual properties.  This is useful for
@@ -455,12 +456,12 @@ export class LoggerImpl implements Logger {
   }
 
   getChild(
-    subcategory: Category | null | undefined,
+    subcategory: MaybeCategory,
   ): LoggerImpl {
     if (!subcategory) return this;
     const subcategoryList = getCategoryList(subcategory);
     const name = subcategoryList[0];
-    const childRef = this.children[name];
+    const childRef = name ? this.children[name] : undefined;
     let child: LoggerImpl | undefined = childRef instanceof LoggerImpl
       ? childRef
       : childRef?.deref();
@@ -726,7 +727,7 @@ export class LoggerCtx implements Logger {
   }
 
   getChild(
-    subcategory: Category | null | undefined,
+    subcategory: MaybeCategory,
   ): Logger {
     return this.logger.getChild(subcategory).with(this.properties);
   }
