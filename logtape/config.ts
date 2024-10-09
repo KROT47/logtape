@@ -2,17 +2,25 @@ import type { Category } from "./category.ts";
 import { type FilterLike, toFilter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
 import { LoggerImpl } from "./logger.ts";
+import type { PropertiesTransformer } from "./propertiesTransformer.ts";
 import { getConsoleSink, type Sink } from "./sink.ts";
 
 /**
  * A configuration for the loggers.
  */
-export interface Config<TSinkId extends string, TFilterId extends string> {
+export interface Config<
+  TSinkId extends string,
+  TFilterId extends string,
+  TTransformerId extends string,
+> {
   /**
    * The sinks to use.  The keys are the sink identifiers, and the values are
    * {@link Sink}s.
    */
   sinks: Record<TSinkId, Sink>;
+
+  propTransformers?: Record<TTransformerId, PropertiesTransformer>;
+
   /**
    * The filters to use.  The keys are the filter identifiers, and the values
    * are either {@link Filter}s or {@link LogLevel}s.
@@ -22,7 +30,7 @@ export interface Config<TSinkId extends string, TFilterId extends string> {
   /**
    * The loggers to configure.
    */
-  loggers: LoggerConfig<TSinkId, TFilterId>[];
+  loggers: LoggerConfig<TSinkId, TFilterId, TTransformerId>[];
 
   /**
    * Whether to reset the configuration before applying this one.
@@ -36,6 +44,7 @@ export interface Config<TSinkId extends string, TFilterId extends string> {
 export interface LoggerConfig<
   TSinkId extends string,
   TFilterId extends string,
+  TTransformerId extends string,
 > {
   /**
    * The category of the logger.  If a string, it is equivalent to an array
@@ -65,6 +74,11 @@ export interface LoggerConfig<
   filters?: TFilterId[];
 
   /**
+   * The filter identifiers to use.
+   */
+  propTransformers?: TTransformerId[];
+
+  /**
    * The log level to filter by.  If `null`, the logger will reject all
    * records.
    */
@@ -74,7 +88,7 @@ export interface LoggerConfig<
 /**
  * The current configuration, if any.  Otherwise, `null`.
  */
-let currentConfig: Config<string, string> | null = null;
+let currentConfig: Config<string, string, string> | null = null;
 
 /**
  * Strong references to the loggers.
@@ -135,7 +149,8 @@ const asyncDisposables: Set<AsyncDisposable> = new Set();
 export async function configure<
   TSinkId extends string,
   TFilterId extends string,
->(config: Config<TSinkId, TFilterId>): Promise<void> {
+  TTransformerId extends string,
+>(config: Config<TSinkId, TFilterId, TTransformerId>): Promise<void> {
   if (currentConfig != null && !config.reset) {
     throw new ConfigError(
       "Already configured; if you want to reset, turn on the reset flag.",
@@ -166,7 +181,9 @@ export async function configure<
       logger.sinks.push(sink);
     }
     logger.parentSinks = cfg.parentSinks ?? "inherit";
-    if (cfg.level !== undefined) logger.filters.push(toFilter(cfg.level));
+    logger.filters.push(
+      toFilter(cfg.level === undefined ? "debug" : cfg.level),
+    );
     for (const filterId of cfg.filters ?? []) {
       const filter = config.filters?.[filterId];
       if (filter === undefined) {
@@ -174,6 +191,15 @@ export async function configure<
         throw new ConfigError(`Filter not found: ${filterId}.`);
       }
       logger.filters.push(toFilter(filter));
+    }
+    logger.propTransformers.push((record) => record.properties);
+    for (const propTransformerId of cfg.propTransformers ?? []) {
+      const propTransformer = config.propTransformers?.[propTransformerId];
+      if (propTransformer === undefined) {
+        await reset();
+        throw new ConfigError(`Transformer not found: ${propTransformerId}.`);
+      }
+      logger.propTransformers.push(propTransformer);
     }
     strongRefs.add(logger);
   }
@@ -191,6 +217,20 @@ export async function configure<
       asyncDisposables.add(filter as AsyncDisposable);
     }
     if (Symbol.dispose in filter) disposables.add(filter as Disposable);
+  }
+
+  for (
+    const propTransformer of Object.values<PropertiesTransformer>(
+      config.propTransformers ?? {},
+    )
+  ) {
+    if (!propTransformer) continue;
+    if (Symbol.asyncDispose in propTransformer) {
+      asyncDisposables.add(propTransformer as AsyncDisposable);
+    }
+    if (Symbol.dispose in propTransformer) {
+      disposables.add(propTransformer as Disposable);
+    }
   }
 
   if ("process" in globalThis) { // @ts-ignore: It's fine to use process in Node
@@ -222,7 +262,7 @@ export async function configure<
  * Get the current configuration, if any.  Otherwise, `null`.
  * @returns The current configuration, if any.  Otherwise, `null`.
  */
-export function getConfig(): Config<string, string> | null {
+export function getConfig(): Config<string, string, string> | null {
   return currentConfig;
 }
 

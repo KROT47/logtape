@@ -1,6 +1,10 @@
 import type { Category, CategoryList } from "./category.ts";
 import type { Filter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
+import type {
+  PropertiesTransformer,
+  RawLogRecord,
+} from "./propertiesTransformer.ts";
 import type { LogRecord } from "./record.ts";
 import type { Sink } from "./sink.ts";
 
@@ -411,6 +415,7 @@ export class LoggerImpl implements Logger {
   readonly sinks: Sink[];
   parentSinks: "inherit" | "override" = "inherit";
   readonly filters: Filter[];
+  readonly propTransformers: PropertiesTransformer[];
 
   static getLogger(category: Category = []): LoggerImpl {
     let rootLogger: LoggerImpl | null = globalRootLoggerSymbol in globalThis
@@ -433,6 +438,7 @@ export class LoggerImpl implements Logger {
     this.category = category;
     this.sinks = [];
     this.filters = [];
+    this.propTransformers = [];
   }
 
   getChild(
@@ -462,6 +468,7 @@ export class LoggerImpl implements Logger {
     while (this.sinks.length > 0) this.sinks.shift();
     this.parentSinks = "inherit";
     while (this.filters.length > 0) this.filters.shift();
+    while (this.propTransformers.length > 0) this.propTransformers.shift();
   }
 
   /**
@@ -486,6 +493,20 @@ export class LoggerImpl implements Logger {
     }
     if (this.filters.length < 1) return this.parent?.filter(record) ?? true;
     return true;
+  }
+
+  propTransform(rawRecord: RawLogRecord): LogRecord["properties"] {
+    if (this.propTransformers.length < 1) {
+      return this.parent?.propTransform(rawRecord) ?? rawRecord.properties;
+    }
+    let resultRecord = rawRecord;
+    for (const propTransform of this.propTransformers) {
+      resultRecord = {
+        ...resultRecord,
+        properties: propTransform(resultRecord),
+      };
+    }
+    return resultRecord.properties;
   }
 
   *getSinks(): Iterable<Sink> {
@@ -520,29 +541,31 @@ export class LoggerImpl implements Logger {
     properties: Record<string, unknown> | (() => Record<string, unknown>),
     bypassSinks?: Set<Sink>,
   ): void {
-    let cachedProps: Record<string, unknown> | undefined = undefined;
-    const record: LogRecord = typeof properties === "function"
-      ? {
-        category: this.category,
-        level,
-        timestamp: Date.now(),
-        get message() {
-          return parseMessageTemplate(rawMessage, this.properties);
-        },
-        rawMessage,
-        get properties() {
-          if (cachedProps == null) cachedProps = properties();
-          return cachedProps;
-        },
-      }
-      : {
-        category: this.category,
-        level,
-        timestamp: Date.now(),
-        message: parseMessageTemplate(rawMessage, properties),
-        rawMessage,
-        properties,
-      };
+    const baseRecord = {
+      category: this.category,
+      level,
+      timestamp: Date.now(),
+      rawMessage,
+    };
+    const getProperties = () => (
+      this.propTransform({
+        ...baseRecord,
+        properties: typeof properties === "function"
+          ? properties()
+          : properties,
+      })
+    );
+    const record: LogRecord = {
+      ...baseRecord,
+      get message() {
+        return parseMessageTemplate(rawMessage, this.properties);
+      },
+      get properties() {
+        const value = getProperties();
+        Object.defineProperty(this, "properties", { value });
+        return value;
+      },
+    };
     this.emit(record, bypassSinks);
   }
 

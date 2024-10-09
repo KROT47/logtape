@@ -98,6 +98,63 @@ Deno.test("LoggerImpl.filter()", async (t) => {
   });
 });
 
+Deno.test("LoggerImpl.propTransform()", async (t) => {
+  const root = LoggerImpl.getLogger([]);
+  const foo = LoggerImpl.getLogger("foo");
+  const fooBar = foo.getChild("bar");
+  const fooBaz = foo.getChild("baz");
+  const fooBarQux = fooBar.getChild("qux");
+  const fooQuux = foo.getChild("quux");
+
+  await t.step("test", () => {
+    foo.propTransformers.push(({ properties }) => ({
+      ...properties,
+      num: (properties.num ? Number(properties.num) : 0) + 1,
+    }));
+    fooBar.propTransformers.push(({ properties }) => ({
+      ...properties,
+      num: (properties.num ? Number(properties.num) : 0) + 2,
+    }));
+    fooBaz.propTransformers.push(({ properties }) => ({
+      ...properties,
+      num: (properties.num ? Number(properties.num) : 0) + 3,
+    }));
+    fooQuux.propTransformers.push(({ properties }) => ({
+      ...properties,
+      num: (properties.num ? Number(properties.num) : 0) + 4,
+    }), ({ properties }) => ({
+      ...properties,
+      num: (properties.num ? Number(properties.num) : 0) + 5,
+    }));
+
+    assertEquals(root.propTransform(info), info.properties);
+    assertEquals(foo.propTransform(info), {
+      ...info.properties,
+      num: 1,
+    });
+    assertEquals(fooBar.propTransform(info), {
+      ...info.properties,
+      num: 2,
+    });
+    assertEquals(fooBaz.propTransform(info), {
+      ...info.properties,
+      num: 3,
+    });
+    assertEquals(fooBarQux.propTransform(info), {
+      ...info.properties,
+      num: 2,
+    });
+    assertEquals(fooQuux.propTransform(info), {
+      ...info.properties,
+      num: 9,
+    });
+  });
+
+  await t.step("tear down", () => {
+    root.resetDescendants();
+  });
+});
+
 Deno.test("LoggerImpl.getSinks()", async (t) => {
   const root = LoggerImpl.getLogger([]);
   const foo = LoggerImpl.getLogger("foo");
