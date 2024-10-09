@@ -10,6 +10,7 @@ import {
 } from "./config.ts";
 import { type Filter, type FilterLike, toFilter } from "./filter.ts";
 import { LoggerImpl } from "./logger.ts";
+import type { PropertiesTransformer } from "./propertiesTransformer.ts";
 import type { LogRecord } from "./record.ts";
 import type { Sink } from "./sink.ts";
 
@@ -30,26 +31,35 @@ Deno.test("configure()", async (t) => {
     const c: Sink = cLogs.push.bind(cLogs);
     const dLogs: LogRecord[] = [];
     const d: Sink = dLogs.push.bind(dLogs);
+    const eLogs: LogRecord[] = [];
+    const e: Sink = eLogs.push.bind(eLogs);
     const x: Filter & AsyncDisposable = () => true;
+    const tr: PropertiesTransformer = ({ properties }) => ({
+      ...properties,
+      tr: true,
+    });
     x[Symbol.asyncDispose] = () => {
       ++disposed;
       return Promise.resolve();
     };
     const y: Filter & Disposable = () => true;
     y[Symbol.dispose] = () => ++disposed;
-    const sinks = { a, b, c, d };
+    const sinks = { a, b, c, d, e };
     const filters: Record<string, FilterLike> = {
       x,
       y,
       debug: "debug",
       warning: "warning",
     };
+    const propTransformers = { tr };
     const config: Config<
       keyof typeof sinks,
-      keyof typeof filters
+      keyof typeof filters,
+      keyof typeof propTransformers
     > = {
       sinks,
       filters,
+      propTransformers,
       loggers: [
         {
           category: "my-app",
@@ -76,6 +86,17 @@ Deno.test("configure()", async (t) => {
         },
         {
           category: ["my-app", "test", "no_level"],
+        },
+        {
+          category: ["my-app", "tr"],
+          sinks: ["e"],
+          filters: ["debug"],
+          propTransformers: ["tr"],
+          level: "info",
+        },
+        {
+          category: ["my-app", "tr", "no_tr"],
+          level: "info",
         },
       ],
     };
@@ -150,6 +171,59 @@ Deno.test("configure()", async (t) => {
       properties: {},
       timestamp: dLogs[0].timestamp,
     }]);
+
+    const trLogger1 = LoggerImpl.getLogger(["my-app", "tr"]);
+    assertEquals(trLogger1.sinks, [e]);
+    trLogger1.info("logged");
+    const trLogger1_record: LogRecord = {
+      level: "info",
+      category: ["my-app", "tr"],
+      message: ["logged"],
+      rawMessage: "logged",
+      properties: { tr: true },
+      timestamp: eLogs[0].timestamp,
+    };
+    assertEquals(eLogs, [
+      trLogger1_record,
+    ]);
+    while (eLogs.length) eLogs.shift();
+    const trLogger2 = trLogger1.getChild("tr2");
+    trLogger2.info("logged");
+    const trLogger2_record: LogRecord = {
+      ...trLogger1_record,
+      category: [...trLogger1_record.category, "tr2"],
+    };
+    assertEquals(eLogs, [
+      { ...trLogger2_record, timestamp: eLogs[0].timestamp },
+    ]);
+    while (eLogs.length) eLogs.shift();
+    trLogger2.info("{tr}", { tr: false });
+    assertEquals(eLogs, [
+      {
+        level: "info",
+        category: ["my-app", "tr", "tr2"],
+        message: ["", true, ""],
+        rawMessage: "{tr}",
+        properties: { tr: true },
+        timestamp: eLogs[0].timestamp,
+      },
+    ]);
+    while (eLogs.length) eLogs.shift();
+    const no_tr = LoggerImpl.getLogger(["my-app", "tr", "no_tr"]);
+    assertEquals(no_tr.sinks, []);
+    assertEquals(no_tr.parent?.sinks, [e]);
+    no_tr.info("logged");
+    const no_tr_record: LogRecord = {
+      level: "info",
+      category: ["my-app", "tr", "no_tr"],
+      message: ["logged"],
+      rawMessage: "logged",
+      properties: {},
+      timestamp: eLogs[0].timestamp,
+    };
+    assertEquals(eLogs, [
+      no_tr_record,
+    ]);
     assertStrictEquals(getConfig(), config);
   });
 
