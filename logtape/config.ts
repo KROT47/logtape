@@ -233,11 +233,16 @@ export async function configure<
     }
   }
 
-  if ("process" in globalThis) { // @ts-ignore: It's fine to use process in Node
+  try {
+    // @ts-ignore: It's fine to use process in Node
     // deno-lint-ignore no-node-globals
     process.on("exit", dispose);
-  } else { // @ts-ignore: It's fine to addEventListener() on the browser/Deno
-    addEventListener("unload", dispose);
+  } catch (_e) {
+    try {
+      addEventListener("unload", dispose);
+    } catch (_e) {
+      /* noop */
+    }
   }
 
   const meta = LoggerImpl.getLogger(["logtape", "meta"]);
