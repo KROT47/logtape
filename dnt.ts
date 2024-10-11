@@ -56,8 +56,6 @@ await build({
       "npm/esm/nodeUtil.js",
       'import util from "./nodeUtil.cjs";\nexport default util;\n',
     );
-    await Deno.copyFile("logtape/nodeUtil.cjs", "npm/esm/nodeUtil.cjs");
-    await Deno.copyFile("logtape/nodeUtil.cjs", "npm/script/nodeUtil.js");
     await Deno.copyFile("LICENSE", "npm/LICENSE");
     await Deno.copyFile("README.md", "npm/README.md");
   },

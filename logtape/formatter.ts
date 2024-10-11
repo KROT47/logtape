@@ -1,6 +1,6 @@
 import type { CategoryList } from "./category.ts";
+import { inspect } from "./inspect.ts";
 import type { LogLevel } from "./level.ts";
-import util from "./nodeUtil.ts";
 import type { LogRecord } from "./record.ts";
 
 /**
@@ -22,34 +22,6 @@ const levelAbbreviations: Record<LogLevel, string> = {
   "error": "ERR",
   "fatal": "FTL",
 };
-
-/**
- * A platform-specific inspect function.  In Deno, this is {@link Deno.inspect},
- * and in Node.js/Bun it is `util.inspect()`.  If neither is available, it
- * falls back to {@link JSON.stringify}.
- *
- * @param value The value to inspect.
- * @param options The options for inspecting the value.
- *                If `colors` is `true`, the output will be ANSI-colored.
- * @returns The string representation of the value.
- */
-const inspect: (value: unknown, options?: { colors?: boolean }) => string =
-  // @ts-ignore: Deno global
-  // dnt-shim-ignore
-  "Deno" in globalThis && "inspect" in globalThis.Deno &&
-    // @ts-ignore: Deno global
-    // dnt-shim-ignore
-    typeof globalThis.Deno.inspect === "function"
-    // @ts-ignore: Deno global
-    // dnt-shim-ignore
-    ? globalThis.Deno.inspect.bind(globalThis.Deno)
-    // @ts-ignore: Node.js global
-    // dnt-shim-ignore
-    : util != null && "inspect" in util && typeof util.inspect === "function"
-    // @ts-ignore: Node.js global
-    // dnt-shim-ignore
-    ? util.inspect.bind(util)
-    : (v) => JSON.stringify(v);
 
 /**
  * The formatted values for a log record.
@@ -161,11 +133,10 @@ export interface TextFormatterOptions {
    * The format of the embedded values.
    *
    * A function that renders a value to a string.  This function is used to
-   * render the values in the log record.  The default is [`util.inspect()`] in
-   * Node.js/Bun and [`Deno.inspect()`] in Deno.
+   * render the values in the log record.
+   * The default is simple polyfill of [`util.inspect()`] in Node.js.
    *
    * [`util.inspect()`]: https://nodejs.org/api/util.html#utilinspectobject-options
-   * [`Deno.inspect()`]: https://docs.deno.com/api/deno/~/Deno.inspect
    * @param value The value to render.
    * @returns The string representation of the value.
    */
