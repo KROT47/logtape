@@ -160,6 +160,86 @@ export interface TextFormatterOptions {
   format?: (values: FormattedValues) => string;
 }
 
+function getDateIsoString(ts: number): string {
+  return new Date(ts).toISOString();
+}
+
+function splitStringGetLeft(str: string, char: string): string {
+  const index = str.indexOf(char);
+  if (index === -1) return str;
+  return str.slice(0, index);
+}
+
+function splitStringGetRight(str: string, char: string): string {
+  const index = str.indexOf(char);
+  if (index === -1) return str;
+  return str.slice(index + 1);
+}
+
+function getTimeFromDateString(dateStr: string): string {
+  return splitStringGetRight(dateStr, "T");
+}
+
+function getDateFromDateString(dateStr: string): string {
+  return splitStringGetLeft(dateStr, "T");
+}
+
+const _tzOffset = -new Date().getTimezoneOffset() / 60;
+const tzOffsetSign = _tzOffset >= 0 ? "+" : "-";
+export const tzOffset = tzOffsetSign +
+  String(Math.abs(_tzOffset)).padStart(2, "0");
+export const timezoneOffset = tzOffset + ":00";
+
+const textFormatterTimestampsMap = new Map<
+  TextFormatterOptions["timestamp"],
+  (ts: number) => string
+>([
+  [
+    "date-time-timezone",
+    (ts) =>
+      getDateIsoString(ts).replace("T", " ").slice(0, -1) +
+      ` ${timezoneOffset}`,
+  ],
+  [
+    "date-time-tz",
+    (ts) =>
+      getDateIsoString(ts).replace("T", " ").slice(0, -1) + ` ${tzOffset}`,
+  ],
+  [
+    "date-time",
+    (ts) => getDateIsoString(ts).replace("T", " ").slice(0, -1),
+  ],
+  [
+    "time-timezone",
+    (ts) =>
+      getTimeFromDateString(getDateIsoString(ts)).slice(0, -1) +
+      ` ${timezoneOffset}`,
+  ],
+  [
+    "time-tz",
+    (ts) =>
+      getTimeFromDateString(getDateIsoString(ts)).slice(0, -1) + ` ${tzOffset}`,
+  ],
+  [
+    "time",
+    (ts) => getTimeFromDateString(getDateIsoString(ts)).slice(0, -1),
+  ],
+  ["date", (ts) => getDateFromDateString(getDateIsoString(ts))],
+  ["rfc3339", (ts) => getDateIsoString(ts)],
+]);
+
+const textFormatterLevelsMap = new Map<
+  TextFormatterOptions["level"],
+  (level: LogLevel) => string
+>([
+  ["ABBR", (level) => levelAbbreviations[level]],
+  ["abbr", (level) => levelAbbreviations[level].toLowerCase()],
+  ["FULL", (level) => level.toUpperCase()],
+  ["full", (level) => level],
+  ["L", (level) => level.charAt(0).toUpperCase()],
+  ["l", (level) => level.charAt(0)],
+]);
+
 /**
  * Get a text formatter with the specified options.  Although it's flexible
  * enough to create a custom formatter, if you want more control, you can
@@ -180,59 +260,35 @@ export interface TextFormatterOptions {
 export function getTextFormatter(
   options: TextFormatterOptions = {},
 ): TextFormatter {
-  const timestampRenderer =
-    options.timestamp == null || options.timestamp === "date-time-timezone"
-      ? (ts: number): string =>
-        new Date(ts).toISOString().replace("T", " ").replace("Z", " +00:00")
-      : options.timestamp === "date-time-tz"
-      ? (ts: number): string =>
-        new Date(ts).toISOString().replace("T", " ").replace("Z", " +00")
-      : options.timestamp === "date-time"
-      ? (ts: number): string =>
-        new Date(ts).toISOString().replace("T", " ").replace("Z", "")
-      : options.timestamp === "time-timezone"
-      ? (ts: number): string =>
-        new Date(ts).toISOString().replace(/.*T/, "").replace("Z", " +00:00")
-      : options.timestamp === "time-tz"
-      ? (ts: number): string =>
-        new Date(ts).toISOString().replace(/.*T/, "").replace("Z", " +00")
-      : options.timestamp === "time"
-      ? (ts: number): string =>
-        new Date(ts).toISOString().replace(/.*T/, "").replace("Z", "")
-      : options.timestamp === "date"
-      ? (ts: number): string => new Date(ts).toISOString().replace(/T.*/, "")
-      : options.timestamp === "rfc3339"
-      ? (ts: number): string => new Date(ts).toISOString()
-      : options.timestamp;
-  const categorySeparator = options.category ?? "·";
+  const timestampRenderer = typeof options.timestamp === "function"
+    ? options.timestamp
+    : textFormatterTimestampsMap.get(
+      options.timestamp ?? "date-time-timezone",
+    )!;
+  const levelRenderer = typeof options.level === "function"
+    ? options.level
+    : textFormatterLevelsMap.get(options.level ?? "ABBR")!;
+
+  const optionsCategory = options.category;
+  const categorySeparator = typeof optionsCategory === "function"
+    ? optionsCategory
+    : (category: CategoryList) => category.join(optionsCategory ?? "·");
   const valueRenderer = options.value ?? inspect;
-  const levelRenderer = options.level == null || options.level === "ABBR"
-    ? (level: LogLevel): string => levelAbbreviations[level]
-    : options.level === "abbr"
-    ? (level: LogLevel): string => levelAbbreviations[level].toLowerCase()
-    : options.level === "FULL"
-    ? (level: LogLevel): string => level.toUpperCase()
-    : options.level === "full"
-    ? (level: LogLevel): string => level
-    : options.level === "L"
-    ? (level: LogLevel): string => level.charAt(0).toUpperCase()
-    : options.level === "l"
-    ? (level: LogLevel): string => level.charAt(0)
-    : options.level;
-  const formatter: (values: FormattedValues) => string = options.format ??
-    (({ timestamp, level, category, message }: FormattedValues) =>
-      `${timestamp} [${level}] ${category}: ${message}`);
+
+  const formatter = options.format ??
+    (({ timestamp, level, category, message, record }: FormattedValues) =>
+      `${timestamp} [${level}] ${category}: ${message}` +
+      (record.message.length === 1 ? ` ${inspect(record.properties)}` : ""));
+
   return (record: LogRecord): string => {
-    let message = "";
-    for (let i = 0; i < record.message.length; i++) {
-      if (i % 2 === 0) message += record.message[i];
-      else message += valueRenderer(record.message[i]);
-    }
     const timestamp = timestampRenderer(record.timestamp);
     const level = levelRenderer(record.level);
-    const category = typeof categorySeparator === "function"
-      ? categorySeparator(record.category)
-      : record.category.join(categorySeparator);
+    const category = categorySeparator(record.category);
+    const message = record.message.reduce<string>(
+      (msg, part, i) => msg + (i % 2 === 0 ? part : valueRenderer(part)),
+      "",
+    );
+
     const values: FormattedValues = {
       timestamp,
       level,
@@ -240,6 +296,7 @@ export function getTextFormatter(
       message,
       record,
     };
+
     return `${formatter(values)}\n`;
   };
 }
@@ -388,6 +445,21 @@ export interface AnsiColorFormatterOptions extends TextFormatterOptions {
   categoryColor?: AnsiColor | null;
 }
 
+function getAnsiStyle(style: AnsiStyle | null): string {
+  return style ? ansiStyles[style] : "";
+}
+function getAnsiColor(color: AnsiColor | null): string {
+  return color ? ansiColors[color] : "";
+}
+function getToAnsiStringTransformer(
+  color: AnsiColor | null,
+  style: AnsiStyle | null,
+): (str: string) => string {
+  const prefix = `${getAnsiStyle(style)}${getAnsiColor(color)}`;
+  const suffix = style || color ? RESET : "";
+  return (str: string) => `${prefix}${str}${suffix}`;
+}
+
 /**
  * Get an ANSI color formatter with the specified options.
  *
@@ -399,52 +471,53 @@ export interface AnsiColorFormatterOptions extends TextFormatterOptions {
 export function getAnsiColorFormatter(
   options: AnsiColorFormatterOptions = {},
 ): TextFormatter {
-  const format = options.format;
-  const timestampStyle = typeof options.timestampStyle === "undefined"
-    ? "dim"
-    : options.timestampStyle;
-  const timestampColor = options.timestampColor ?? null;
-  const timestampPrefix = `${
-    timestampStyle == null ? "" : ansiStyles[timestampStyle]
-  }${timestampColor == null ? "" : ansiColors[timestampColor]}`;
-  const timestampSuffix = timestampStyle == null && timestampColor == null
-    ? ""
-    : RESET;
-  const levelStyle = typeof options.levelStyle === "undefined"
-    ? "bold"
-    : options.levelStyle;
-  const levelColors = options.levelColors ?? defaultLevelColors;
-  const categoryStyle = typeof options.categoryStyle === "undefined"
-    ? "dim"
-    : options.categoryStyle;
-  const categoryColor = options.categoryColor ?? null;
-  const categoryPrefix = `${
-    categoryStyle == null ? "" : ansiStyles[categoryStyle]
-  }${categoryColor == null ? "" : ansiColors[categoryColor]}`;
-  const categorySuffix = categoryStyle == null && categoryColor == null
-    ? ""
-    : RESET;
+  const {
+    format,
+    timestampStyle = "dim",
+    timestampColor = null,
+    levelStyle = "bold",
+    levelColors = defaultLevelColors,
+    categoryStyle = "dim",
+    categoryColor = null,
+  } = options;
+
+  const getAnsiTimestamp = getToAnsiStringTransformer(
+    timestampColor,
+    timestampStyle,
+  );
+
+  const getAnsiCategory = getToAnsiStringTransformer(
+    categoryColor,
+    categoryStyle,
+  );
+
   return getTextFormatter({
     timestamp: "date-time-tz",
     value(value: unknown): string {
       return inspect(value, { colors: true });
     },
     ...options,
-    format({ timestamp, level, category, message, record }): string {
+    format({ timestamp: ts, level: l, category, message, record }): string {
+      const timestamp = getAnsiTimestamp(ts);
       const levelColor = levelColors[record.level];
-      timestamp = `${timestampPrefix}${timestamp}${timestampSuffix}`;
-      level = `${levelStyle == null ? "" : ansiStyles[levelStyle]}${
-        levelColor == null ? "" : ansiColors[levelColor]
-      }${level}${levelStyle == null && levelColor == null ? "" : RESET}`;
-      return format == null
-        ? `${timestamp} ${level} ${categoryPrefix}${category}:${categorySuffix} ${message}`
-        : format({
+      const getAnsiLevel = getToAnsiStringTransformer(
+        levelColor,
+        levelStyle,
+      );
+      const level = getAnsiLevel(l);
+      return format
+        ? format({
           timestamp,
           level,
-          category: `${categoryPrefix}${category}${categorySuffix}`,
+          category: getAnsiCategory(category),
           message,
           record,
-        });
+        })
+        : `${timestamp} ${level} ${getAnsiCategory(`${category}:`)} ${message}${
+          record.message.length === 1
+            ? ` ${inspect(record.properties, { colors: true })}`
+            : ""
+        }`;
     },
   });
 }

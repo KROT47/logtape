@@ -57,7 +57,7 @@ export function inspect(value: unknown, options: {
     }
 
     if (typeof val === "string") {
-      return tryAddColors(`"${val}"`, colors, "string");
+      return tryAddColors(`\`${val}\``, colors, "string");
     }
 
     if (typeof val === "number") {

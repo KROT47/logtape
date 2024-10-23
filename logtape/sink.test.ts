@@ -4,7 +4,7 @@ import makeConsoleMock from "consolemock";
 import fs from "node:fs";
 import { isDeno } from "which_runtime";
 import { debug, error, fatal, info, warning } from "./fixtures.ts";
-import { defaultTextFormatter } from "./formatter.ts";
+import { defaultTextFormatter, timezoneOffset } from "./formatter.ts";
 import type { LogLevel } from "./level.ts";
 import type { LogRecord } from "./record.ts";
 import {
@@ -62,11 +62,11 @@ Deno.test("getStreamSink()", async () => {
   assertEquals(
     buffer,
     `\
-2023-11-14 22:13:20.000 +00:00 [DBG] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [INF] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [WRN] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [ERR] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [FTL] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [DBG] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [INF] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [WRN] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [ERR] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [FTL] my-app·junk: Hello, 123 & 456!
 `,
   );
 });
@@ -163,27 +163,27 @@ Deno.test("getConsoleSink()", () => {
   assertEquals(mock2.history(), [
     {
       DEBUG: [
-        "2023-11-14 22:13:20.000 +00:00 [DBG] my-app·junk: Hello, 123 & 456!",
+        `2023-11-14 22:13:20.000 ${timezoneOffset} [DBG] my-app·junk: Hello, 123 & 456!`,
       ],
     },
     {
       INFO: [
-        "2023-11-14 22:13:20.000 +00:00 [INF] my-app·junk: Hello, 123 & 456!",
+        `2023-11-14 22:13:20.000 ${timezoneOffset} [INF] my-app·junk: Hello, 123 & 456!`,
       ],
     },
     {
       WARN: [
-        "2023-11-14 22:13:20.000 +00:00 [WRN] my-app·junk: Hello, 123 & 456!",
+        `2023-11-14 22:13:20.000 ${timezoneOffset} [WRN] my-app·junk: Hello, 123 & 456!`,
       ],
     },
     {
       ERROR: [
-        "2023-11-14 22:13:20.000 +00:00 [ERR] my-app·junk: Hello, 123 & 456!",
+        `2023-11-14 22:13:20.000 ${timezoneOffset} [ERR] my-app·junk: Hello, 123 & 456!`,
       ],
     },
     {
       ERROR: [
-        "2023-11-14 22:13:20.000 +00:00 [FTL] my-app·junk: Hello, 123 & 456!",
+        `2023-11-14 22:13:20.000 ${timezoneOffset} [FTL] my-app·junk: Hello, 123 & 456!`,
       ],
     },
   ]);
@@ -228,11 +228,11 @@ Deno.test("getFileSink()", () => {
   assertEquals(
     Deno.readTextFileSync(path),
     `\
-2023-11-14 22:13:20.000 +00:00 [DBG] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [INF] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [WRN] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [ERR] my-app·junk: Hello, 123 & 456!
-2023-11-14 22:13:20.000 +00:00 [FTL] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [DBG] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [INF] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [WRN] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [ERR] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [FTL] my-app·junk: Hello, 123 & 456!
 `,
   );
 });

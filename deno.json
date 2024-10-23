@@ -1,6 +1,6 @@
 {
   "name": "@metamorph/logtape",
-  "version": "0.7.9",
+  "version": "0.7.11",
   "license": "MIT",
   "exports": "./logtape/mod.ts",
   "imports": {
