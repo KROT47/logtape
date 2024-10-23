@@ -91,6 +91,7 @@ Deno.test("getConsoleSink()", () => {
         "color: default;",
         123,
         456,
+        "",
       ],
     },
     {
@@ -103,6 +104,7 @@ Deno.test("getConsoleSink()", () => {
         "color: default;",
         123,
         456,
+        "",
       ],
     },
     {
@@ -115,6 +117,7 @@ Deno.test("getConsoleSink()", () => {
         "color: default;",
         123,
         456,
+        "",
       ],
     },
     {
@@ -127,6 +130,7 @@ Deno.test("getConsoleSink()", () => {
         "color: default;",
         123,
         456,
+        "",
       ],
     },
     {
@@ -139,6 +143,7 @@ Deno.test("getConsoleSink()", () => {
         "color: default;",
         123,
         456,
+        "",
       ],
     },
   ]);

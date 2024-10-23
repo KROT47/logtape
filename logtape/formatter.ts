@@ -562,30 +562,57 @@ const logLevelStyles: Record<LogLevel, string> = {
  *          {@link console.log}.
  */
 export function defaultConsoleFormatter(record: LogRecord): readonly unknown[] {
-  let msg = "";
-  const values: unknown[] = [];
-  for (let i = 0; i < record.message.length; i++) {
-    if (i % 2 === 0) msg += record.message[i];
-    else {
-      msg += "%o";
-      values.push(record.message[i]);
-    }
-  }
-  const date = new Date(record.timestamp);
-  const time = `${date.getUTCHours().toString().padStart(2, "0")}:${
-    date.getUTCMinutes().toString().padStart(2, "0")
-  }:${date.getUTCSeconds().toString().padStart(2, "0")}.${
-    date.getUTCMilliseconds().toString().padStart(3, "0")
-  }`;
+  const { message, timestamp, level, category, properties } = record;
+
+  // Format time as HH:MM:SS.mmm
+  const date = new Date(timestamp);
+  const time = date.toISOString().substr(11, 12);
+
+  // Build the log message string with placeholders and collect values
+  const msg = message.map((m, i) => (i % 2 === 0 ? m : "%o")).join("");
+  const values = message.filter((_, i) => i % 2 !== 0);
+
+  // Format the log record for console output
   return [
-    `%c${time} %c${levelAbbreviations[record.level]}%c %c${
-      record.category.join("\xb7")
+    `%c${time} %c${levelAbbreviations[level]}%c %c${
+      category.join("\xb7")
     } %c${msg}`,
     "color: gray;",
-    logLevelStyles[record.level],
+    logLevelStyles[level],
     "background-color: default;",
     "color: gray;",
     "color: default;",
     ...values,
+    message.length === 1 ? properties : "",
   ];
 }
+
+// export function defaultConsoleFormatter(record: LogRecord): readonly unknown[] {
+//   let msg = "";
+//   const values: unknown[] = [];
+//   for (let i = 0; i < record.message.length; i++) {
+//     if (i % 2 === 0) msg += record.message[i];
+//     else {
+//       msg += "%o";
+//       values.push(record.message[i]);
+//     }
+//   }
+//   const date = new Date(record.timestamp);
+//   const time = `${date.getUTCHours().toString().padStart(2, "0")}:${
+//     date.getUTCMinutes().toString().padStart(2, "0")
+//   }:${date.getUTCSeconds().toString().padStart(2, "0")}.${
+//     date.getUTCMilliseconds().toString().padStart(3, "0")
+//   }`;
+//   return [
+//     `%c${time} %c${levelAbbreviations[record.level]}%c %c${
+//       record.category.join("\xb7")
+//     } %c${msg}`,
+//     "color: gray;",
+//     logLevelStyles[record.level],
+//     "background-color: default;",
+//     "color: gray;",
+//     "color: default;",
+//     ...values,
+//     record.message.length === 1 ? record.properties : "",
+//   ];
+// }

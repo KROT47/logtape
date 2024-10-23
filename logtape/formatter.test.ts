@@ -324,6 +324,27 @@ Deno.test(`defaultConsoleFormatter()`, () => {
       `color: default;`,
       123,
       456,
+      "",
+    ],
+  );
+
+  assertEquals(
+    defaultConsoleFormatter({
+      level: "info",
+      category: ["my-app", "junk"],
+      message: ["Hello!"],
+      rawMessage: "Hello!",
+      timestamp: 1700000000000,
+      properties: { a: 123, b: 456 },
+    }),
+    [
+      `%c22:13:20.000 %cINF%c %cmy-app·junk %cHello!`,
+      `color: gray;`,
+      `background-color: white; color: black;`,
+      `background-color: default;`,
+      `color: gray;`,
+      `color: default;`,
+      { a: 123, b: 456 },
     ],
   );
 });
