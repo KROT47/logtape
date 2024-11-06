@@ -2,6 +2,7 @@ import type { CategoryList } from "./category.ts";
 import { inspect } from "./inspect.ts";
 import type { LogLevel } from "./level.ts";
 import type { LogRecord } from "./record.ts";
+import { getFunction } from "./utils.ts";
 
 /**
  * A text formatter is a function that accepts a log record and returns
@@ -54,11 +55,15 @@ export interface FormattedValues {
   record: LogRecord;
 }
 
+export type BaseFormatterOptions = {
+  shouldPrintProperties?: boolean | ((record: LogRecord) => boolean);
+};
+
 /**
  * The various options for the built-in text formatters.
  * @since 0.6.0
  */
-export interface TextFormatterOptions {
+export interface TextFormatterOptions extends BaseFormatterOptions {
   /**
    * The timestamp format.  This can be one of the following:
    *
@@ -481,6 +486,9 @@ export function getAnsiColorFormatter(
     categoryColor = null,
   } = options;
 
+  const shouldPrintProperties = getFunction(options.shouldPrintProperties) ??
+    (({ message }: LogRecord) => message.length === 1);
+
   const getAnsiTimestamp = getToAnsiStringTransformer(
     timestampColor,
     timestampStyle,
@@ -514,7 +522,7 @@ export function getAnsiColorFormatter(
           record,
         })
         : `${timestamp} ${level} ${getAnsiCategory(`${category}:`)} ${message}${
-          record.message.length === 1
+          shouldPrintProperties(record) && record.properties
             ? ` ${inspect(record.properties, { colors: true })}`
             : ""
         }`;
@@ -554,6 +562,8 @@ const logLevelStyles: Record<LogLevel, string> = {
   "fatal": "background-color: maroon; color: white;",
 };
 
+type DefaultConsoleFormatterOptions = BaseFormatterOptions;
+
 /**
  * The default console formatter.
  *
@@ -561,58 +571,35 @@ const logLevelStyles: Record<LogLevel, string> = {
  * @returns The formatted log record, as an array of arguments for
  *          {@link console.log}.
  */
-export function defaultConsoleFormatter(record: LogRecord): readonly unknown[] {
-  const { message, timestamp, level, category, properties } = record;
+export function getDefaultConsoleFormatter(
+  options: DefaultConsoleFormatterOptions = {},
+): ConsoleFormatter {
+  return (record: LogRecord): readonly unknown[] => {
+    const { message, timestamp, level, category, properties } = record;
 
-  // Format time as HH:MM:SS.mmm
-  const date = new Date(timestamp);
-  const time = date.toISOString().substr(11, 12);
+    const shouldPrintProperties = getFunction(options.shouldPrintProperties) ??
+      (({ message }: LogRecord) => message.length === 1);
 
-  // Build the log message string with placeholders and collect values
-  const msg = message.map((m, i) => (i % 2 === 0 ? m : "%o")).join("");
-  const values = message.filter((_, i) => i % 2 !== 0);
+    // Format time as HH:MM:SS.mmm
+    const date = new Date(timestamp);
+    const time = date.toISOString().substring(11, 23);
 
-  // Format the log record for console output
-  return [
-    `%c${time} %c${levelAbbreviations[level]}%c %c${
-      category.join("\xb7")
-    } %c${msg}`,
-    "color: gray;",
-    logLevelStyles[level],
-    "background-color: default;",
-    "color: gray;",
-    "color: default;",
-    ...values,
-    message.length === 1 ? properties : "",
-  ];
+    // Build the log message string with placeholders and collect values
+    const msg = message.map((m, i) => (i % 2 === 0 ? m : "%o")).join("");
+    const values = message.filter((_, i) => i % 2 !== 0);
+
+    // Format the log record for console output
+    return [
+      `%c${time} %c${levelAbbreviations[level]}%c %c${
+        category.join("\xb7")
+      } %c${msg}`,
+      "color: gray;",
+      logLevelStyles[level],
+      "background-color: default;",
+      "color: gray;",
+      "color: default;",
+      ...values,
+      shouldPrintProperties(record) && properties ? properties : "",
+    ];
+  };
 }
-
-// export function defaultConsoleFormatter(record: LogRecord): readonly unknown[] {
-//   let msg = "";
-//   const values: unknown[] = [];
-//   for (let i = 0; i < record.message.length; i++) {
-//     if (i % 2 === 0) msg += record.message[i];
-//     else {
-//       msg += "%o";
-//       values.push(record.message[i]);
-//     }
-//   }
-//   const date = new Date(record.timestamp);
-//   const time = `${date.getUTCHours().toString().padStart(2, "0")}:${
-//     date.getUTCMinutes().toString().padStart(2, "0")
-//   }:${date.getUTCSeconds().toString().padStart(2, "0")}.${
-//     date.getUTCMilliseconds().toString().padStart(3, "0")
-//   }`;
-//   return [
-//     `%c${time} %c${levelAbbreviations[record.level]}%c %c${
-//       record.category.join("\xb7")
-//     } %c${msg}`,
-//     "color: gray;",
-//     logLevelStyles[record.level],
-//     "background-color: default;",
-//     "color: gray;",
-//     "color: default;",
-//     ...values,
-//     record.message.length === 1 ? record.properties : "",
-//   ];
-// }

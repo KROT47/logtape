@@ -602,7 +602,10 @@ export class LoggerImpl implements Logger {
   _log(
     level: LogLevel,
     rawMessage: string,
-    properties: Record<string, unknown> | (() => Record<string, unknown>),
+    properties:
+      | Record<string, unknown>
+      | (() => Record<string, unknown>)
+      | undefined,
     bypassSinks?: Set<Sink>,
   ): void {
     const baseRecord = {
@@ -686,7 +689,7 @@ export class LoggerImpl implements Logger {
     ...values: unknown[]
   ): void {
     if (typeof message === "string") {
-      this._log(level, message, (values[0] ?? {}) as Record<string, unknown>);
+      this._log(level, message, values[0] as Record<string, unknown>);
     } else if (typeof message === "function") {
       this.logLazily(level, message);
     } else {
@@ -856,8 +859,9 @@ const metaLogger = LoggerImpl.getLogger(["logtape", "meta"]);
  */
 export function parseMessageTemplate(
   template: string,
-  properties: Record<string, unknown>,
+  properties: Record<string, unknown> | undefined,
 ): readonly unknown[] {
+  if (!properties) return [template];
   const message: unknown[] = [];
   let part = "";
   for (let i = 0; i < template.length; i++) {

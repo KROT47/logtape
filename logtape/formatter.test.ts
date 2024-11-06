@@ -2,10 +2,10 @@ import { assertEquals } from "@std/assert/assert-equals";
 import { fatal, info } from "./fixtures.ts";
 import {
   ansiColorFormatter,
-  defaultConsoleFormatter,
   defaultTextFormatter,
   type FormattedValues,
   getAnsiColorFormatter,
+  getDefaultConsoleFormatter,
   getTextFormatter,
   tzOffset,
 } from "./formatter.ts";
@@ -312,9 +312,9 @@ Deno.test(`ansiColorFormatter()`, () => {
   );
 });
 
-Deno.test(`defaultConsoleFormatter()`, () => {
+Deno.test(`getDefaultConsoleFormatter()`, () => {
   assertEquals(
-    defaultConsoleFormatter(info),
+    getDefaultConsoleFormatter()(info),
     [
       `%c22:13:20.000 %cINF%c %cmy-app·junk %cHello, %o & %o!`,
       `color: gray;`,
@@ -329,7 +329,7 @@ Deno.test(`defaultConsoleFormatter()`, () => {
   );
 
   assertEquals(
-    defaultConsoleFormatter({
+    getDefaultConsoleFormatter()({
       level: "info",
       category: ["my-app", "junk"],
       message: ["Hello!"],

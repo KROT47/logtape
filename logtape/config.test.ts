@@ -124,7 +124,7 @@ Deno.test("configure()", async (t) => {
         category: ["my-app", "foo"],
         message: ["logged"],
         rawMessage: "logged",
-        properties: {},
+        properties: undefined,
         timestamp: bLogs[0].timestamp,
       },
     ]);
@@ -136,7 +136,7 @@ Deno.test("configure()", async (t) => {
         category: ["my-app", "bar"],
         message: ["logged"],
         rawMessage: "logged",
-        properties: {},
+        properties: undefined,
         timestamp: cLogs[0].timestamp,
       },
     ]);
@@ -146,7 +146,7 @@ Deno.test("configure()", async (t) => {
         category: ["my-app", "foo"],
         message: ["logged"],
         rawMessage: "logged",
-        properties: {},
+        properties: undefined,
         timestamp: bLogs[0].timestamp,
       },
     ]);
@@ -156,7 +156,7 @@ Deno.test("configure()", async (t) => {
         category: ["my-app", "bar"],
         message: ["logged"],
         rawMessage: "logged",
-        properties: {},
+        properties: undefined,
         timestamp: cLogs[0].timestamp,
       },
     ]);
@@ -168,7 +168,7 @@ Deno.test("configure()", async (t) => {
       category: ["my-app", "test", "no_level"],
       message: ["logged"],
       rawMessage: "logged",
-      properties: {},
+      properties: undefined,
       timestamp: dLogs[0].timestamp,
     }]);
 
@@ -218,7 +218,7 @@ Deno.test("configure()", async (t) => {
       category: ["my-app", "tr", "no_tr"],
       message: ["logged"],
       rawMessage: "logged",
-      properties: {},
+      properties: undefined,
       timestamp: eLogs[0].timestamp,
     };
     assertEquals(eLogs, [

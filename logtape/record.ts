@@ -46,5 +46,5 @@ export interface LogRecord {
   /**
    * The extra properties of the log record.
    */
-  readonly properties: Record<string, unknown>;
+  readonly properties: Record<string, unknown> | undefined;
 }

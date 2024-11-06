@@ -135,22 +135,22 @@ Deno.test("LoggerImpl.propTransform()", async (t) => {
   const fooQuux = foo.getChild("quux");
 
   await t.step("test", () => {
-    foo.propTransformers.push(({ properties }) => ({
+    foo.propTransformers.push(({ properties = {} }) => ({
       ...properties,
       num: (properties.num ? Number(properties.num) : 0) + 1,
     }));
-    fooBar.propTransformers.push(({ properties }) => ({
+    fooBar.propTransformers.push(({ properties = {} }) => ({
       ...properties,
       num: (properties.num ? Number(properties.num) : 0) + 2,
     }));
-    fooBaz.propTransformers.push(({ properties }) => ({
+    fooBaz.propTransformers.push(({ properties = {} }) => ({
       ...properties,
       num: (properties.num ? Number(properties.num) : 0) + 3,
     }));
-    fooQuux.propTransformers.push(({ properties }) => ({
+    fooQuux.propTransformers.push(({ properties = {} }) => ({
       ...properties,
       num: (properties.num ? Number(properties.num) : 0) + 4,
-    }), ({ properties }) => ({
+    }), ({ properties = {} }) => ({
       ...properties,
       num: (properties.num ? Number(properties.num) : 0) + 5,
     }));
@@ -272,13 +272,13 @@ Deno.test("LoggerImpl.emit()", async (t) => {
       "Failed to emit a log record to sink ",
       errorSink,
       ": ",
-      rootRecords[4].properties.error,
+      rootRecords[4].properties?.error,
       "",
     ]);
     assertEquals(rootRecords[4].properties, {
       record: error,
       sink: errorSink,
-      error: rootRecords[4].properties.error,
+      error: rootRecords[4].properties?.error,
     });
 
     root.sinks.push(errorSink);
@@ -669,7 +669,7 @@ for (const method of methods) {
           message: ["Hello, world!"],
           rawMessage: "Hello, world!",
           timestamp: logs[0].timestamp,
-          properties: {},
+          properties: undefined,
         },
       ]);
 

@@ -1,8 +1,9 @@
 import { type FilterLike, toFilter } from "./filter.ts";
 import {
+  type BaseFormatterOptions,
   type ConsoleFormatter,
-  defaultConsoleFormatter,
   defaultTextFormatter,
+  getDefaultConsoleFormatter,
   type TextFormatter,
 } from "./formatter.ts";
 import type { LogRecord } from "./record.ts";
@@ -102,7 +103,7 @@ export function getStreamSink(
 /**
  * Options for the {@link getConsoleSink} function.
  */
-export interface ConsoleSinkOptions {
+export interface ConsoleSinkOptions extends BaseFormatterOptions {
   /**
    * The console formatter or text formatter to use.
    * Defaults to {@link defaultConsoleFormatter}.
@@ -122,7 +123,7 @@ export interface ConsoleSinkOptions {
  * @returns A sink that logs to the console.
  */
 export function getConsoleSink(options: ConsoleSinkOptions = {}): Sink {
-  const formatter = options.formatter ?? defaultConsoleFormatter;
+  const formatter = options.formatter ?? getDefaultConsoleFormatter(options);
   const console = options.console ?? globalThis.console;
   return (record: LogRecord) => {
     const args = formatter(record);
