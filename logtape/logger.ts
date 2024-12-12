@@ -917,3 +917,7 @@ export function renderMessage(
   }
   return args;
 }
+
+export function isLogger(obj: unknown): obj is Logger {
+  return obj instanceof LoggerImpl;
+}
