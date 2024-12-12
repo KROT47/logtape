@@ -919,5 +919,5 @@ export function renderMessage(
 }
 
 export function isLogger(obj: unknown): obj is Logger {
-  return obj instanceof LoggerImpl;
+  return !!obj && obj?.constructor.name === LoggerImpl.name;
 }
