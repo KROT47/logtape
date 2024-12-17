@@ -8,6 +8,13 @@ type Colors = {
   reset: string;
 };
 
+export type InspectConfig = {
+  depth?: number;
+  showHidden?: boolean;
+  colors?: boolean | Partial<Colors>;
+  printFunctions?: boolean;
+};
+
 const baseColors: Colors = {
   string: "\x1b[32m", // Green for strings
   number: "\x1b[33m", // Yellow for numbers
@@ -24,12 +31,15 @@ function tryAddColors(
   return colors ? `${colors[type]}${value}${colors.reset}` : value;
 }
 
-export function inspect(value: unknown, options: {
-  depth?: number;
-  showHidden?: boolean;
-  colors?: boolean | Partial<Colors>;
-} = {}): string {
-  const { depth = 5, showHidden = false, colors: withColors = false } = options;
+export function inspect(
+  value: unknown,
+  {
+    depth = 5,
+    showHidden = false,
+    colors: withColors = false,
+    printFunctions = false,
+  }: InspectConfig = {},
+): string {
   const colors = withColors
     ? {
       ...baseColors,
@@ -53,7 +63,10 @@ export function inspect(value: unknown, options: {
     }
 
     if (typeof val === "function") {
-      return tryAddColors(`[Function: ${val.name}]`, colors, "function");
+      const functionString = printFunctions
+        ? val.toString()
+        : `[Function: ${val.name}]`;
+      return tryAddColors(functionString, colors, "function");
     }
 
     if (typeof val === "string") {

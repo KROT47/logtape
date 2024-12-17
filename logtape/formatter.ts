@@ -1,5 +1,5 @@
 import type { CategoryList } from "./category.ts";
-import { inspect } from "./inspect.ts";
+import { inspect, type InspectConfig } from "./inspect.ts";
 import type { LogLevel } from "./level.ts";
 import type { LogRecord } from "./record.ts";
 import { getFunction } from "./utils.ts";
@@ -58,6 +58,7 @@ export interface FormattedValues {
 
 export type BaseFormatterOptions = {
   shouldPrintProperties?: boolean | ((record: LogRecord) => boolean);
+  inspectConfig?: InspectConfig;
 };
 
 /**
@@ -264,27 +265,36 @@ const textFormatterLevelsMap = new Map<
  * @since 0.6.0
  */
 export function getTextFormatter(
-  options: TextFormatterOptions = {},
+  {
+    timestamp,
+    level,
+    category,
+    value,
+    format,
+    inspectConfig,
+  }: TextFormatterOptions = {},
 ): TextFormatter {
-  const timestampRenderer = typeof options.timestamp === "function"
-    ? options.timestamp
+  const timestampRenderer = typeof timestamp === "function"
+    ? timestamp
     : textFormatterTimestampsMap.get(
-      options.timestamp ?? "date-time-timezone",
+      timestamp ?? "date-time-timezone",
     )!;
-  const levelRenderer = typeof options.level === "function"
-    ? options.level
-    : textFormatterLevelsMap.get(options.level ?? "ABBR")!;
+  const levelRenderer = typeof level === "function"
+    ? level
+    : textFormatterLevelsMap.get(level ?? "ABBR")!;
 
-  const optionsCategory = options.category;
+  const optionsCategory = category;
   const categorySeparator = typeof optionsCategory === "function"
     ? optionsCategory
     : (category: CategoryList) => category.join(optionsCategory ?? "·");
-  const valueRenderer = options.value ?? inspect;
+  const valueRenderer = value ?? inspect;
 
-  const formatter = options.format ??
+  const formatter = format ??
     (({ timestamp, level, category, message, record }: FormattedValues) =>
       `${timestamp} [${level}] ${category}: ${message}` +
-      (record.message.length === 1 ? ` ${inspect(record.properties)}` : ""));
+      (record.message.length === 1
+        ? ` ${inspect(record.properties, inspectConfig)}`
+        : ""));
 
   return (record: LogRecord): string => {
     const timestamp = timestampRenderer(record.timestamp);
@@ -489,6 +499,7 @@ export function getAnsiColorFormatter(
     levelColors = defaultLevelColors,
     categoryStyle = "dim",
     categoryColor = null,
+    inspectConfig,
   } = options;
 
   const shouldPrintProperties = getFunction(options.shouldPrintProperties) ??
@@ -507,7 +518,7 @@ export function getAnsiColorFormatter(
   return getTextFormatter({
     timestamp: "date-time-tz",
     value(value: unknown): string {
-      return inspect(value, { colors: true });
+      return inspect(value, { colors: true, ...inspectConfig });
     },
     ...options,
     format({ timestamp: ts, level: l, category, message, record }): string {
@@ -528,7 +539,9 @@ export function getAnsiColorFormatter(
         })
         : `${timestamp} ${level} ${getAnsiCategory(`${category}:`)} ${message}${
           shouldPrintProperties(record) && record.properties
-            ? ` ${inspect(record.properties, { colors: true })}`
+            ? ` ${
+              inspect(record.properties, { colors: true, ...inspectConfig })
+            }`
             : ""
         }`;
     },
