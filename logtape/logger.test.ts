@@ -6,13 +6,7 @@ import { assertLessOrEqual } from "@std/assert/assert-less-or-equal";
 import { assertStrictEquals } from "@std/assert/assert-strict-equals";
 import { toFilter } from "./filter.ts";
 import { debug, error, info, warning } from "./fixtures.ts";
-import {
-  getLogger,
-  LoggerCtx,
-  LoggerImpl,
-  parseMessageTemplate,
-  renderMessage,
-} from "./logger.ts";
+import { getLogger, LoggerCtx, LoggerImpl, renderMessage } from "./logger.ts";
 import type { LogRecord } from "./record.ts";
 import type { Sink } from "./sink.ts";
 
@@ -269,11 +263,7 @@ Deno.test("LoggerImpl.emit()", async (t) => {
     assertEquals(rootRecords[4].category, ["logtape", "meta"]);
     assertEquals(rootRecords[4].level, "fatal");
     assertEquals(rootRecords[4].message, [
-      "Failed to emit a log record to sink ",
-      errorSink,
-      ": ",
-      rootRecords[4].properties?.error,
-      "",
+      "Failed to emit a log record to sink",
     ]);
     assertEquals(rootRecords[4].properties, {
       record: error,
@@ -303,7 +293,7 @@ Deno.test("LoggerImpl.log()", async (t) => {
       {
         category: ["foo"],
         level: "info",
-        message: ["Hello, ", 123, "!"],
+        message: ["Hello, {foo}!"],
         rawMessage: "Hello, {foo}!",
         timestamp: logs[0].timestamp,
         properties: { foo: 123 },
@@ -330,7 +320,7 @@ Deno.test("LoggerImpl.log()", async (t) => {
       {
         category: ["foo"],
         level: "error",
-        message: ["Hello, ", 123, "!"],
+        message: ["Hello, {foo}!"],
         rawMessage: "Hello, {foo}!",
         timestamp: logs[0].timestamp,
         properties: { foo: 123 },
@@ -430,7 +420,7 @@ Deno.test("LoggerCtx.log()", async (t) => {
       {
         category: ["foo"],
         level: "info",
-        message: ["Hello, ", 1, " ", 2, " ", 3, "!"],
+        message: ["Hello, {a} {b} {c}!"],
         rawMessage: "Hello, {a} {b} {c}!",
         timestamp: logs[0].timestamp,
         properties: { a: 1, b: 2, c: 3 },
@@ -457,7 +447,7 @@ Deno.test("LoggerCtx.log()", async (t) => {
       {
         category: ["foo"],
         level: "error",
-        message: ["Hello, ", 1, " ", 2, " ", 3, "!"],
+        message: ["Hello, {a} {b} {c}!"],
         rawMessage: "Hello, {a} {b} {c}!",
         timestamp: logs[0].timestamp,
         properties: { a: 1, b: 2, c: 3 },
@@ -658,7 +648,7 @@ for (const method of methods) {
         {
           category: ["foo"],
           level: method === "warn" ? "warning" : method,
-          message: ["Hello, ", 123, "!"],
+          message: ["Hello, {foo}!"],
           rawMessage: "Hello, {foo}!",
           timestamp: logs[0].timestamp,
           properties: { foo: 123 },
@@ -688,7 +678,7 @@ for (const method of methods) {
         {
           category: ["foo"],
           level: method === "warn" ? "warning" : method,
-          message: ["Hello, ", 1, " ", 2, " ", 3, "!"],
+          message: ["Hello, {a} {b} {c}!"],
           rawMessage: "Hello, {a} {b} {c}!",
           timestamp: logs[0].timestamp,
           properties: { a: 1, b: 2, c: 3 },
@@ -717,15 +707,13 @@ for (const method of methods) {
       const logs: LogRecord[] = [];
       logger.sinks.push(logs.push.bind(logs));
       let before = Date.now();
-      logger[method]("Hello, {foo}!", () => {
-        return { foo: 123 };
-      });
+      logger[method]("Hello, {foo}!", () => ({ foo: 123 }));
       let after = Date.now();
       assertEquals(logs, [
         {
           category: ["foo"],
           level: method === "warn" ? "warning" : method,
-          message: ["Hello, ", 123, "!"],
+          message: ["Hello, {foo}!"],
           rawMessage: "Hello, {foo}!",
           timestamp: logs[0].timestamp,
           properties: { foo: 123 },
@@ -744,7 +732,7 @@ for (const method of methods) {
         {
           category: ["foo"],
           level: method === "warn" ? "warning" : method,
-          message: ["Hello, ", 1, " ", 2, " ", 3, "!"],
+          message: ["Hello, {a} {b} {c}!"],
           rawMessage: "Hello, {a} {b} {c}!",
           timestamp: logs[0].timestamp,
           properties: { a: 1, b: 2, c: 3 },
@@ -759,58 +747,6 @@ for (const method of methods) {
     });
   });
 }
-
-Deno.test("parseMessageTemplate()", () => {
-  assertEquals(parseMessageTemplate("Hello, world!", {}), ["Hello, world!"]);
-  assertEquals(
-    parseMessageTemplate("Hello, world!", { foo: 123 }),
-    ["Hello, world!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {{world}}!", { foo: 123 }),
-    ["Hello, {world}!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {foo}!", { foo: 123 }),
-    ["Hello, ", 123, "!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, { foo\t}!", { " foo\t": 123, foo: 456 }),
-    ["Hello, ", 123, "!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, { foo\t}!", { foo: 456 }),
-    ["Hello, ", 456, "!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, { foo\t}!", { " foo": 456 }),
-    ["Hello, ", undefined, "!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {{foo}}!", { foo: 123 }),
-    ["Hello, {foo}!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {bar}!", { foo: 123 }),
-    ["Hello, ", undefined, "!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {bar}!", { foo: 123, bar: 456 }),
-    ["Hello, ", 456, "!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {foo}, {bar}!", { foo: 123, bar: 456 }),
-    ["Hello, ", 123, ", ", 456, "!"],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {foo}, {bar}", { foo: 123, bar: 456 }),
-    ["Hello, ", 123, ", ", 456, ""],
-  );
-  assertEquals(
-    parseMessageTemplate("Hello, {{world!", { foo: 123 }),
-    ["Hello, {world!"],
-  );
-});
 
 Deno.test("renderMessage()", () => {
   function rm(tpl: TemplateStringsArray, ...values: unknown[]) {

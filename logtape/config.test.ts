@@ -202,7 +202,7 @@ Deno.test("configure()", async (t) => {
       {
         level: "info",
         category: ["my-app", "tr", "tr2"],
-        message: ["", true, ""],
+        message: ["{tr}"],
         rawMessage: "{tr}",
         properties: { tr: true },
         timestamp: eLogs[0].timestamp,

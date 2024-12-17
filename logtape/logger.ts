@@ -648,7 +648,7 @@ export class LoggerImpl implements Logger {
         bypassSinks2.add(sink);
         metaLogger._log(
           "fatal",
-          "Failed to emit a log record to sink {sink}: {error}",
+          "Failed to emit a log record to sink",
           { sink, error, record },
           bypassSinks2,
         );
@@ -670,6 +670,7 @@ export class LoggerImpl implements Logger {
       level,
       timestamp: Date.now(),
       rawMessage,
+      message: [rawMessage],
     };
     const getProperties = () => (
       this.propTransform({
@@ -681,9 +682,6 @@ export class LoggerImpl implements Logger {
     );
     const record: LogRecord = {
       ...baseRecord,
-      get message() {
-        return parseMessageTemplate(rawMessage, this.properties);
-      },
       get properties() {
         const value = getProperties();
         Object.defineProperty(this, "properties", { value });
@@ -926,54 +924,6 @@ export class LoggerCtx implements Logger {
  * The meta logger.  It is a logger with the category `["logtape", "meta"]`.
  */
 const metaLogger = LoggerImpl.getLogger(metaLoggerCategory);
-
-/**
- * Parse a message template into a message template array and a values array.
- * @param template The message template.
- * @param properties The values to replace placeholders with.
- * @returns The message template array and the values array.
- */
-export function parseMessageTemplate(
-  template: string,
-  properties: Record<string, unknown> | undefined,
-): readonly unknown[] {
-  if (!properties) return [template];
-  const message: unknown[] = [];
-  let part = "";
-  for (let i = 0; i < template.length; i++) {
-    const char = template.charAt(i);
-    const nextChar = template.charAt(i + 1);
-
-    if (char === "{" && nextChar === "{") {
-      // Escaped { character
-      part = part + char;
-      i++;
-    } else if (char === "}" && nextChar === "}") {
-      // Escaped } character
-      part = part + char;
-      i++;
-    } else if (char === "{") {
-      // Start of a placeholder
-      message.push(part);
-      part = "";
-    } else if (char === "}") {
-      // End of a placeholder
-      let prop: unknown;
-      if (part.match(/^\s|\s$/)) {
-        prop = part in properties ? properties[part] : properties[part.trim()];
-      } else {
-        prop = properties[part];
-      }
-      message.push(prop);
-      part = "";
-    } else {
-      // Default case
-      part = part + char;
-    }
-  }
-  message.push(part);
-  return message;
-}
 
 /**
  * Render a message template with values.

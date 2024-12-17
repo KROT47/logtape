@@ -1,7 +1,7 @@
+import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 import { Presets, SingleBar } from "cli-progress";
 import { jsrRef } from "markdown-it-jsr-ref";
 import { defineConfig } from "vitepress";
-import { transformerTwoslash } from "@shikijs/vitepress-twoslash";
 
 const progress = new SingleBar({}, Presets.shades_classic);
 let started = false;
@@ -56,7 +56,6 @@ const MANUAL = {
     { text: "Configuration", link: "/manual/config" },
     { text: "Categories", link: "/manual/categories" },
     { text: "Severity levels", link: "/manual/levels" },
-    { text: "Structured logging", link: "/manual/struct" },
     { text: "Contexts", link: "/manual/contexts" },
     { text: "Sinks", link: "/manual/sinks" },
     { text: "Filters", link: "/manual/filters" },
