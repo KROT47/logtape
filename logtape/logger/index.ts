@@ -1,3 +1,3 @@
 export * from "./getLogger.ts";
-export * from "./logger.ts";
+export * from "./LoggerImpl.ts";
 export type * from "./types.ts";

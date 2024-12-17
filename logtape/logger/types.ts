@@ -1,7 +1,7 @@
 import type { CategoryList, MaybeCategory } from "../category.ts";
 import type { globalRootLoggerSymbol } from "../constants.ts";
 import type { LogLevel } from "../level.ts";
-import type { LoggerImpl } from "./logger.ts";
+import type { LoggerImpl } from "./LoggerImpl.ts";
 
 /**
  * The global root logger registry.

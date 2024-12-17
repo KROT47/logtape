@@ -1,6 +1,6 @@
 import type { Category } from "../category.ts";
 import type { Logger } from "./index.ts";
-import { LoggerImpl } from "./logger.ts";
+import { LoggerImpl } from "./LoggerImpl.ts";
 
 /**
  * Get a logger with the given category.
