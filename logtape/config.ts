@@ -1,4 +1,5 @@
 import type { Category } from "./category.ts";
+import { metaLoggerCategory } from "./constants.ts";
 import { type FilterLike, toFilter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
 import { LoggerImpl } from "./logger.ts";
@@ -245,22 +246,13 @@ export async function configure<
     }
   }
 
-  const meta = LoggerImpl.getLogger(["logtape", "meta"]);
+  const meta = LoggerImpl.getLogger(metaLoggerCategory);
   if (!metaConfigured) {
     meta.sinks.push(getConsoleSink());
   }
 
-  meta.info(
-    "LogTape loggers are configured.  Note that LogTape itself uses the meta " +
-      "logger, which has category {metaLoggerCategory}.  The meta logger " +
-      "purposes to log internal errors such as sink exceptions.  If you " +
-      "are seeing this message, the meta logger is somehow configured.  " +
-      "It's recommended to configure the meta logger with a separate sink " +
-      "so that you can easily notice if logging itself fails or is " +
-      "misconfigured.  To turn off this message, configure the meta logger " +
-      "with higher log levels than {dismissLevel}.",
-    { metaLoggerCategory: ["logtape", "meta"], dismissLevel: "info" },
-  );
+  meta
+    .info`LogTape loggers are configured.  Note that LogTape itself uses the meta logger, which has category ${metaLoggerCategory}.  The meta logger purposes to log internal errors such as sink exceptions.  If you are seeing this message, the meta logger is somehow configured.  It's recommended to configure the meta logger with a separate sink so that you can easily notice if logging itself fails or is misconfigured.  To turn off this message, configure the meta logger with higher log levels than ${"info"}.`;
 }
 
 /**

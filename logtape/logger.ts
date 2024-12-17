@@ -4,6 +4,7 @@ import {
   getCategoryList,
   type MaybeCategory,
 } from "./category.ts";
+import { metaLoggerCategory } from "./constants.ts";
 import type { Filter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
 import type {
@@ -697,26 +698,31 @@ export class LoggerImpl implements Logger {
     callback: LogCallback,
     properties: Record<string, unknown> = {},
   ): void {
-    let rawMessage: TemplateStringsArray | undefined = undefined;
-    let msg: unknown[] | undefined = undefined;
-    function realizeMessage(): [unknown[], TemplateStringsArray] {
-      if (msg == null || rawMessage == null) {
-        msg = callback((tpl, ...values) => {
-          rawMessage = tpl;
-          return renderMessage(tpl, values);
-        });
-        if (rawMessage == null) throw new TypeError("No log record was made.");
-      }
+    function realizeMessage(
+      this: LogRecord,
+    ): [unknown[], TemplateStringsArray] {
+      let rawMessage: TemplateStringsArray | undefined = undefined;
+      const msg = callback((tpl, ...values) => {
+        rawMessage = tpl;
+        return renderMessage(tpl, values);
+      });
+      if (rawMessage == null) throw new TypeError("No log record was made.");
+
+      Object.defineProperties(this, {
+        message: { value: msg },
+        rawMessage: { value: rawMessage },
+      });
+
       return [msg, rawMessage];
     }
     this.emit({
       category: this.category,
       level,
       get message() {
-        return realizeMessage()[0];
+        return realizeMessage.call(this)[0];
       },
       get rawMessage() {
-        return realizeMessage()[1];
+        return realizeMessage.call(this)[1];
       },
       timestamp: Date.now(),
       properties,
@@ -919,7 +925,7 @@ export class LoggerCtx implements Logger {
 /**
  * The meta logger.  It is a logger with the category `["logtape", "meta"]`.
  */
-const metaLogger = LoggerImpl.getLogger(["logtape", "meta"]);
+const metaLogger = LoggerImpl.getLogger(metaLoggerCategory);
 
 /**
  * Parse a message template into a message template array and a values array.
