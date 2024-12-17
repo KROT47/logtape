@@ -527,13 +527,12 @@ interface GlobalRootLoggerRegistry {
  * instead.  This class is exported for testing purposes.
  */
 export class LoggerImpl implements Logger {
-  readonly parent: LoggerImpl | null;
-  readonly children: Record<string, LoggerImpl | WeakRef<LoggerImpl>>;
-  readonly category: CategoryList;
-  readonly sinks: Sink[];
+  readonly children: Record<string, LoggerImpl | WeakRef<LoggerImpl>> = {};
+  readonly sinks: Sink[] = [];
   parentSinks: "inherit" | "override" = "inherit";
-  readonly filters: Filter[];
-  readonly propTransformers: PropertiesTransformer[];
+  readonly filters: Filter[] = [];
+  readonly propTransformers: PropertiesTransformer[] = [];
+  readonly properties?: Record<string, unknown> | undefined;
 
   static getLogger(category: Category = []): LoggerImpl {
     let rootLogger: LoggerImpl | null = globalRootLoggerSymbol in globalThis
@@ -549,19 +548,24 @@ export class LoggerImpl implements Logger {
     return rootLogger.getChild(category);
   }
 
-  constructor(parent: LoggerImpl | null, category: CategoryList) {
-    this.parent = parent;
-    this.children = {};
-    this.category = category;
-    this.sinks = [];
-    this.filters = [];
-    this.propTransformers = [];
+  constructor(
+    readonly parent: LoggerImpl | null,
+    readonly category: CategoryList,
+    properties?: Record<string, unknown>,
+  ) {
+    this.properties = mergeProperties(
+      parent?.properties,
+      properties,
+    );
   }
 
   getChild(
     subcategory: MaybeCategory,
+    properties?: Record<string, unknown>,
   ): LoggerImpl {
-    if (!subcategory) return this;
+    if (!subcategory) {
+      return properties ? this.with(properties) : this;
+    }
     const subcategoryList = getCategoryList(subcategory);
     const name = subcategoryList[0];
     const childRef = name ? this.children[name] : undefined;
@@ -604,8 +608,8 @@ export class LoggerImpl implements Logger {
     this.reset();
   }
 
-  with(properties: Record<string, unknown>): Logger {
-    return new LoggerCtx(this, { ...properties });
+  with(properties: Record<string, unknown>): LoggerImpl {
+    return new LoggerImpl(this, this.category, properties);
   }
 
   filter(record: LogRecord): boolean {
@@ -672,14 +676,17 @@ export class LoggerImpl implements Logger {
       rawMessage,
       message: [rawMessage],
     };
-    const getProperties = () => (
-      this.propTransform({
-        ...baseRecord,
-        properties: typeof properties === "function"
-          ? properties()
-          : properties,
-      })
-    );
+    const getProperties = () => {
+      return (
+        this.propTransform({
+          ...baseRecord,
+          properties: mergeProperties(
+            this.properties,
+            typeof properties === "function" ? properties() : properties,
+          ),
+        })
+      );
+    };
     const record: LogRecord = {
       ...baseRecord,
       get properties() {
@@ -723,7 +730,7 @@ export class LoggerImpl implements Logger {
         return realizeMessage.call(this)[1];
       },
       timestamp: Date.now(),
-      properties,
+      properties: mergeProperties(this.properties, properties),
     });
   }
 
@@ -739,7 +746,7 @@ export class LoggerImpl implements Logger {
       message: renderMessage(messageTemplate, values),
       rawMessage: messageTemplate,
       timestamp: Date.now(),
-      properties,
+      properties: mergeProperties(this.properties, properties),
     });
   }
 
@@ -750,126 +757,6 @@ export class LoggerImpl implements Logger {
   ): void {
     if (typeof message === "string") {
       this._log(level, message, values[0] as Record<string, unknown>);
-    } else if (typeof message === "function") {
-      this.logLazily(level, message);
-    } else {
-      this.logTemplate(level, message, values);
-    }
-  }
-
-  debug(
-    message: TemplateStringsArray | string | LogCallback,
-    ...values: unknown[]
-  ): void {
-    this.log("debug", message, ...values);
-  }
-
-  info(
-    message: TemplateStringsArray | string | LogCallback,
-    ...values: unknown[]
-  ): void {
-    this.log("info", message, ...values);
-  }
-
-  warn(
-    message: TemplateStringsArray | string | LogCallback,
-    ...values: unknown[]
-  ): void {
-    this.log("warning", message, ...values);
-  }
-
-  error(
-    message: TemplateStringsArray | string | LogCallback,
-    ...values: unknown[]
-  ): void {
-    this.log("error", message, ...values);
-  }
-
-  critical(
-    message: TemplateStringsArray | string | LogCallback,
-    ...values: unknown[]
-  ): void {
-    this.log("critical", message, ...values);
-  }
-
-  fatal(
-    message: TemplateStringsArray | string | LogCallback,
-    ...values: unknown[]
-  ): void {
-    this.log("fatal", message, ...values);
-  }
-}
-
-/**
- * A logger implementation with contextual properties.  Do not use this
- * directly; use {@link Logger.with} instead.  This class is exported
- * for testing purposes.
- */
-export class LoggerCtx implements Logger {
-  logger: LoggerImpl;
-  properties: Record<string, unknown>;
-
-  constructor(logger: LoggerImpl, properties: Record<string, unknown>) {
-    this.logger = logger;
-    this.properties = properties;
-  }
-
-  get category(): CategoryList {
-    return this.logger.category;
-  }
-
-  get parent(): Logger | null {
-    return this.logger.parent;
-  }
-
-  getChild(
-    subcategory: MaybeCategory,
-  ): Logger {
-    return this.logger.getChild(subcategory).with(this.properties);
-  }
-
-  with(properties: Record<string, unknown>): Logger {
-    return new LoggerCtx(this.logger, { ...this.properties, ...properties });
-  }
-
-  _log(
-    level: LogLevel,
-    message: string,
-    properties: Record<string, unknown> | (() => Record<string, unknown>),
-    bypassSinks?: Set<Sink>,
-  ): void {
-    this.logger._log(
-      level,
-      message,
-      typeof properties === "function"
-        ? () => ({
-          ...this.properties,
-          ...properties(),
-        })
-        : { ...this.properties, ...properties },
-      bypassSinks,
-    );
-  }
-
-  logLazily(level: LogLevel, callback: LogCallback): void {
-    this.logger.logLazily(level, callback, this.properties);
-  }
-
-  logTemplate(
-    level: LogLevel,
-    messageTemplate: TemplateStringsArray,
-    values: unknown[],
-  ): void {
-    this.logger.logTemplate(level, messageTemplate, values, this.properties);
-  }
-
-  log(
-    level: LogLevel,
-    message: TemplateStringsArray | string | LogCallback,
-    ...values: unknown[]
-  ): void {
-    if (typeof message === "string") {
-      this._log(level, message, (values[0] ?? {}) as Record<string, unknown>);
     } else if (typeof message === "function") {
       this.logLazily(level, message);
     } else {
@@ -946,4 +833,13 @@ export function renderMessage(
 
 export function isLogger(obj: unknown): obj is Logger {
   return !!obj && obj?.constructor.name === LoggerImpl.name;
+}
+
+function mergeProperties(
+  defaultProperties: Record<string, unknown> | undefined,
+  properties: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  return defaultProperties && properties
+    ? { ...defaultProperties, ...properties }
+    : (defaultProperties ?? properties);
 }

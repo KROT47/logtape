@@ -6,7 +6,7 @@ import { assertLessOrEqual } from "@std/assert/assert-less-or-equal";
 import { assertStrictEquals } from "@std/assert/assert-strict-equals";
 import { toFilter } from "./filter.ts";
 import { debug, error, info, warning } from "./fixtures.ts";
-import { getLogger, LoggerCtx, LoggerImpl, renderMessage } from "./logger.ts";
+import { getLogger, LoggerImpl, renderMessage } from "./logger.ts";
 import type { LogRecord } from "./record.ts";
 import type { Sink } from "./sink.ts";
 
@@ -70,22 +70,22 @@ Deno.test("Logger.getChild()", () => {
   assertEquals(fooBarBaz.category, ["foo", "bar", "baz"]);
   assertEquals(fooBarBaz.parent, fooBar);
 
-  const fooCtx = foo.with({ a: 1, b: 2 });
-  const fooBarCtx = fooCtx.getChild("bar");
-  assertEquals(fooBarCtx.category, ["foo", "bar"]);
+  const fooChild = foo.with({ a: 1, b: 2 });
+  const fooBarChild = fooChild.getChild("bar");
+  assertEquals(fooBarChild.category, ["foo", "bar"]);
   // @ts-ignore: internal attribute:
-  assertEquals(fooBarCtx.properties, { a: 1, b: 2 });
+  assertEquals(fooBarChild.properties, { a: 1, b: 2 });
 });
 
 Deno.test("Logger.with()", () => {
   const foo = getLogger("foo");
-  const ctx = foo.with({ a: 1, b: 2 });
-  assertEquals(ctx.parent, getLogger());
-  assertEquals(ctx.category, ["foo"]);
+  const childLogger = foo.with({ a: 1, b: 2 });
+  assertEquals(childLogger.parent, foo);
+  assertEquals(childLogger.category, ["foo"]);
   // @ts-ignore: internal attribute:
-  assertEquals(ctx.properties, { a: 1, b: 2 });
+  assertEquals(childLogger.properties, { a: 1, b: 2 });
   // @ts-ignore: internal attribute:
-  assertEquals(ctx.with({ c: 3 }).properties, { a: 1, b: 2, c: 3 });
+  assertEquals(childLogger.with({ c: 3 }).properties, { a: 1, b: 2, c: 3 });
 });
 
 Deno.test("LoggerImpl.filter()", async (t) => {
@@ -406,15 +406,15 @@ Deno.test("LoggerImpl.logTemplate()", async (t) => {
   });
 });
 
-Deno.test("LoggerCtx.log()", async (t) => {
+Deno.test("Logger.with().log()", async (t) => {
   const logger = LoggerImpl.getLogger("foo");
-  const ctx = new LoggerCtx(logger, { a: 1, b: 2 });
+  const childLogger = logger.with({ a: 1, b: 2 });
 
   await t.step("test", () => {
     const logs: LogRecord[] = [];
     logger.sinks.push(logs.push.bind(logs));
     const before = Date.now();
-    ctx.log("info", "Hello, {a} {b} {c}!", { c: 3 });
+    childLogger.log("info", "Hello, {a} {b} {c}!", { c: 3 });
     const after = Date.now();
     assertEquals(logs, [
       {
@@ -432,14 +432,14 @@ Deno.test("LoggerCtx.log()", async (t) => {
     logs.shift();
     logger.filters.push(toFilter("error"));
     let called = 0;
-    ctx.log("warning", "Hello, {a} {b} {c}!", () => {
+    childLogger.log("warning", "Hello, {a} {b} {c}!", () => {
       called++;
       return { c: 3 };
     });
     assertEquals(logs, []);
     assertEquals(called, 0);
 
-    ctx.log("error", "Hello, {a} {b} {c}!", () => {
+    childLogger.log("error", "Hello, {a} {b} {c}!", () => {
       called++;
       return { c: 3 };
     });
@@ -461,9 +461,9 @@ Deno.test("LoggerCtx.log()", async (t) => {
   });
 });
 
-Deno.test("LoggerCtx.logLazily()", async (t) => {
+Deno.test("Logger.with().logLazily()", async (t) => {
   const logger = LoggerImpl.getLogger("foo");
-  const ctx = new LoggerCtx(logger, { a: 1, b: 2 });
+  const childLogger = logger.with({ a: 1, b: 2 });
 
   await t.step("test", () => {
     let called = 0;
@@ -480,7 +480,7 @@ Deno.test("LoggerCtx.logLazily()", async (t) => {
     assertEquals(called, 0);
 
     const before = Date.now();
-    ctx.logLazily("error", (l) => l`Hello, ${calc()}!`);
+    childLogger.logLazily("error", (l) => l`Hello, ${calc()}!`);
     const after = Date.now();
     assertEquals(logs, [
       {
@@ -502,13 +502,13 @@ Deno.test("LoggerCtx.logLazily()", async (t) => {
   });
 });
 
-Deno.test("LoggerCtx.logTemplate()", async (t) => {
+Deno.test("Logger.with().logTemplate()", async (t) => {
   const logger = LoggerImpl.getLogger("foo");
-  const ctx = new LoggerCtx(logger, { a: 1, b: 2 });
+  const childLogger = logger.with({ a: 1, b: 2 });
 
   await t.step("test", () => {
     function info(tpl: TemplateStringsArray, ...values: unknown[]) {
-      ctx.logTemplate("info", tpl, values);
+      childLogger.logTemplate("info", tpl, values);
     }
     const logs: LogRecord[] = [];
     logger.sinks.push(logs.push.bind(logs));
@@ -546,7 +546,7 @@ const methods = [
 for (const method of methods) {
   Deno.test(`Logger.${method}()`, async (t) => {
     const logger = LoggerImpl.getLogger("foo");
-    const ctx = new LoggerCtx(logger, { a: 1, b: 2 });
+    const childLogger = logger.with({ a: 1, b: 2 });
 
     await t.step("template", () => {
       function tpl(tpl: TemplateStringsArray, ...values: unknown[]) {
@@ -571,13 +571,13 @@ for (const method of methods) {
       assertGreaterOrEqual(logs[0].timestamp, before);
       assertLessOrEqual(logs[0].timestamp, after);
 
-      function ctxTpl(tpl: TemplateStringsArray, ...values: unknown[]) {
-        ctx[method](tpl, ...values);
+      function childLoggerTpl(tpl: TemplateStringsArray, ...values: unknown[]) {
+        childLogger[method](tpl, ...values);
       }
 
       logs.shift();
       before = Date.now();
-      ctxTpl`Hello, ${123}!`;
+      childLoggerTpl`Hello, ${123}!`;
       after = Date.now();
       assertEquals(logs, [
         {
@@ -618,7 +618,7 @@ for (const method of methods) {
 
       logs.shift();
       before = Date.now();
-      ctx[method]((l) => l`Hello, ${123}!`);
+      childLogger[method]((l) => l`Hello, ${123}!`);
       after = Date.now();
       assertEquals(logs, [
         {
@@ -672,7 +672,7 @@ for (const method of methods) {
 
       logs.shift();
       before = Date.now();
-      ctx[method]("Hello, {a} {b} {c}!", { c: 3 });
+      childLogger[method]("Hello, {a} {b} {c}!", { c: 3 });
       after = Date.now();
       assertEquals(logs, [
         {
@@ -686,7 +686,7 @@ for (const method of methods) {
       ]);
 
       logs.shift();
-      ctx[method]("Hello, world!");
+      childLogger[method]("Hello, world!");
       assertEquals(logs, [
         {
           category: ["foo"],
@@ -724,7 +724,7 @@ for (const method of methods) {
 
       logs.shift();
       before = Date.now();
-      ctx[method]("Hello, {a} {b} {c}!", () => {
+      childLogger[method]("Hello, {a} {b} {c}!", () => {
         return { c: 3 };
       });
       after = Date.now();
