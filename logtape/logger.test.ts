@@ -122,7 +122,7 @@ Deno.test("LoggerImpl.filter()", async (t) => {
 
 Deno.test("LoggerImpl.propTransform()", async (t) => {
   const root = LoggerImpl.getLogger([]);
-  const foo = LoggerImpl.getLogger("foo");
+  const foo = LoggerImpl.getLogger<{ num?: number }>("foo");
   const fooBar = foo.getChild("bar");
   const fooBaz = foo.getChild("baz");
   const fooBarQux = fooBar.getChild("qux");
@@ -208,13 +208,14 @@ Deno.test("LoggerImpl.getSinks()", async (t) => {
 });
 
 Deno.test("LoggerImpl.emit()", async (t) => {
-  const root = LoggerImpl.getLogger([]);
+  type P = { error?: Error; record?: LogRecord; sink?: Sink };
+  const root = LoggerImpl.getLogger<P>([]);
   const foo = root.getChild("foo");
   const fooBar = foo.getChild("bar");
   const fooBarBaz = fooBar.getChild("baz");
 
   await t.step("test", () => {
-    const rootRecords: LogRecord[] = [];
+    const rootRecords: LogRecord<P>[] = [];
     root.sinks.push(rootRecords.push.bind(rootRecords));
     root.filters.push(toFilter("warning"));
     const fooRecords: LogRecord[] = [];
@@ -283,54 +284,58 @@ Deno.test("LoggerImpl.emit()", async (t) => {
 Deno.test("LoggerImpl.log()", async (t) => {
   const logger = LoggerImpl.getLogger("foo");
 
-  await t.step("test", () => {
-    const logs: LogRecord[] = [];
-    logger.sinks.push(logs.push.bind(logs));
-    const before = Date.now();
-    logger.log("info", "Hello, {foo}!", { foo: 123 });
-    const after = Date.now();
-    assertEquals(logs, [
-      {
-        category: ["foo"],
-        level: "info",
-        message: ["Hello, {foo}!"],
-        rawMessage: "Hello, {foo}!",
-        timestamp: logs[0].timestamp,
-        properties: { foo: 123 },
-      },
-    ]);
-    assertGreaterOrEqual(logs[0].timestamp, before);
-    assertLessOrEqual(logs[0].timestamp, after);
+  await t.step("test", async (t) => {
+    for (const properties of [{ foo: 123 }, "any"]) {
+      await t.step(typeof properties, () => {
+        const logs: LogRecord[] = [];
+        logger.sinks.push(logs.push.bind(logs));
+        const before = Date.now();
+        logger.log("info", "Hello, {foo}!", properties);
+        const after = Date.now();
+        assertEquals(logs, [
+          {
+            category: ["foo"],
+            level: "info",
+            message: ["Hello, {foo}!"],
+            rawMessage: "Hello, {foo}!",
+            timestamp: logs[0].timestamp,
+            properties: properties,
+          },
+        ]);
+        assertGreaterOrEqual(logs[0].timestamp, before);
+        assertLessOrEqual(logs[0].timestamp, after);
 
-    logs.shift();
-    logger.filters.push(toFilter("error"));
-    let called = 0;
-    logger.log("warning", "Hello, {foo}!", () => {
-      called++;
-      return { foo: 123 };
-    });
-    assertEquals(logs, []);
-    assertEquals(called, 0);
+        logs.shift();
+        logger.filters.push(toFilter("error"));
+        let called = 0;
+        logger.log("warning", "Hello, {foo}!", () => {
+          called++;
+          return properties;
+        });
+        assertEquals(logs, []);
+        assertEquals(called, 0);
 
-    logger.log("error", "Hello, {foo}!", () => {
-      called++;
-      return { foo: 123 };
-    });
-    assertEquals(logs, [
-      {
-        category: ["foo"],
-        level: "error",
-        message: ["Hello, {foo}!"],
-        rawMessage: "Hello, {foo}!",
-        timestamp: logs[0].timestamp,
-        properties: { foo: 123 },
-      },
-    ]);
-    assertEquals(called, 1);
-  });
+        logger.log("error", "Hello, {foo}!", () => {
+          called++;
+          return properties;
+        });
+        assertEquals(logs, [
+          {
+            category: ["foo"],
+            level: "error",
+            message: ["Hello, {foo}!"],
+            rawMessage: "Hello, {foo}!",
+            timestamp: logs[0].timestamp,
+            properties: properties,
+          },
+        ]);
+        assertEquals(called, 1);
+      });
 
-  await t.step("tear down", () => {
-    logger.resetDescendants();
+      await t.step("tear down", () => {
+        logger.resetDescendants();
+      });
+    }
   });
 });
 
@@ -361,7 +366,7 @@ Deno.test("LoggerImpl.logLazily()", async (t) => {
         message: ["Hello, ", 123, "!"],
         rawMessage: templateLiteral`Hello, ${null}!`,
         timestamp: logs[0].timestamp,
-        properties: {},
+        properties: undefined,
       },
     ]);
     assertGreaterOrEqual(logs[0].timestamp, before);
@@ -394,7 +399,7 @@ Deno.test("LoggerImpl.logTemplate()", async (t) => {
         message: ["Hello, ", 123, "!"],
         rawMessage: templateLiteral`Hello, ${null}!`,
         timestamp: logs[0].timestamp,
-        properties: {},
+        properties: undefined,
       },
     ]);
     assertGreaterOrEqual(logs[0].timestamp, before);
@@ -565,7 +570,7 @@ for (const method of methods) {
           message: ["Hello, ", 123, "!"],
           rawMessage: templateLiteral`Hello, ${null}!`,
           timestamp: logs[0].timestamp,
-          properties: {},
+          properties: undefined,
         },
       ]);
       assertGreaterOrEqual(logs[0].timestamp, before);
@@ -610,7 +615,7 @@ for (const method of methods) {
           message: ["Hello, ", 123, "!"],
           rawMessage: templateLiteral`Hello, ${null}!`,
           timestamp: logs[0].timestamp,
-          properties: {},
+          properties: undefined,
         },
       ]);
       assertGreaterOrEqual(logs[0].timestamp, before);

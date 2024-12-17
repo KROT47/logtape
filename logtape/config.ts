@@ -13,6 +13,7 @@ export interface Config<
   TSinkId extends string,
   TFilterId extends string,
   TTransformerId extends string,
+  P,
 > {
   /**
    * The sinks to use.  The keys are the sink identifiers, and the values are
@@ -20,7 +21,7 @@ export interface Config<
    */
   sinks: Record<TSinkId, Sink>;
 
-  propTransformers?: Record<TTransformerId, PropertiesTransformer>;
+  propTransformers?: Record<TTransformerId, PropertiesTransformer<P>>;
 
   /**
    * The filters to use.  The keys are the filter identifiers, and the values
@@ -89,14 +90,15 @@ export interface LoggerConfig<
 /**
  * The current configuration, if any.  Otherwise, `null`.
  */
-let currentConfig: Config<string, string, string> | null = null;
+// deno-lint-ignore no-explicit-any
+let currentConfig: Config<string, string, string, any> | null = null;
 
 /**
  * Strong references to the loggers.
  * This is to prevent the loggers from being garbage collected so that their
  * sinks and filters are not removed.
  */
-const strongRefs: Set<LoggerImpl> = new Set();
+const strongRefs: Set<LoggerImpl<unknown>> = new Set();
 
 /**
  * Disposables to dispose when resetting the configuration.
@@ -151,7 +153,8 @@ export async function configure<
   TSinkId extends string,
   TFilterId extends string,
   TTransformerId extends string,
->(config: Config<TSinkId, TFilterId, TTransformerId>): Promise<void> {
+  P,
+>(config: Config<TSinkId, TFilterId, TTransformerId, P>): Promise<void> {
   if (currentConfig != null && !config.reset) {
     throw new ConfigError(
       "Already configured; if you want to reset, turn on the reset flag.",
@@ -200,7 +203,9 @@ export async function configure<
         await reset();
         throw new ConfigError(`Transformer not found: ${propTransformerId}.`);
       }
-      logger.propTransformers.push(propTransformer);
+      logger.propTransformers.push(
+        propTransformer as PropertiesTransformer<unknown>,
+      );
     }
     strongRefs.add(logger);
   }
@@ -221,7 +226,7 @@ export async function configure<
   }
 
   for (
-    const propTransformer of Object.values<PropertiesTransformer>(
+    const propTransformer of Object.values<PropertiesTransformer<P>>(
       config.propTransformers ?? {},
     )
   ) {
@@ -259,7 +264,7 @@ export async function configure<
  * Get the current configuration, if any.  Otherwise, `null`.
  * @returns The current configuration, if any.  Otherwise, `null`.
  */
-export function getConfig(): Config<string, string, string> | null {
+export function getConfig(): Config<string, string, string, unknown> | null {
   return currentConfig;
 }
 

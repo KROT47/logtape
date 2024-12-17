@@ -1,7 +1,7 @@
 import type { LogRecord } from "./record.ts";
 
-export type RawLogRecord = Pick<
-  LogRecord,
+export type RawLogRecord<P> = Pick<
+  LogRecord<P>,
   "category" | "level" | "rawMessage" | "timestamp" | "properties"
 >;
 
@@ -10,6 +10,6 @@ export type RawLogRecord = Pick<
  * @param rawRecord The raw log record to use for transformation.
  * @returns The transformed properties.
  */
-export type PropertiesTransformer = (
-  rawRecord: RawLogRecord,
-) => LogRecord["properties"];
+export type PropertiesTransformer<P> = (
+  rawRecord: RawLogRecord<P>,
+) => P;

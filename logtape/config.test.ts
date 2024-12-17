@@ -34,7 +34,7 @@ Deno.test("configure()", async (t) => {
     const eLogs: LogRecord[] = [];
     const e: Sink = eLogs.push.bind(eLogs);
     const x: Filter & AsyncDisposable = () => true;
-    const tr: PropertiesTransformer = ({ properties }) => ({
+    const tr: PropertiesTransformer<object> = ({ properties }) => ({
       ...properties,
       tr: true,
     });
@@ -55,7 +55,8 @@ Deno.test("configure()", async (t) => {
     const config: Config<
       keyof typeof sinks,
       keyof typeof filters,
-      keyof typeof propTransformers
+      keyof typeof propTransformers,
+      object
     > = {
       sinks,
       filters,

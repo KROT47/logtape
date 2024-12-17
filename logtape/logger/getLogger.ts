@@ -15,6 +15,6 @@ import { LoggerImpl } from "./LoggerImpl.ts";
  * @returns The logger.
  */
 
-export function getLogger(category: Category = []): Logger {
+export function getLogger<P>(category: Category = []): Logger<P> {
   return LoggerImpl.getLogger(category);
 }

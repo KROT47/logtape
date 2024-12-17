@@ -7,7 +7,7 @@ import type { LoggerImpl } from "./LoggerImpl.ts";
  * The global root logger registry.
  */
 export interface GlobalRootLoggerRegistry {
-  [globalRootLoggerSymbol]?: LoggerImpl;
+  [globalRootLoggerSymbol]?: LoggerImpl<unknown>;
 }
 
 /**
@@ -24,7 +24,7 @@ export interface GlobalRootLoggerRegistry {
  * logger.fatal `A fatal error message with ${value}.`;
  * ```
  */
-export interface Logger {
+export interface Logger<P> {
   /**
    * The category of the logger.  It is an array of strings.
    */
@@ -34,7 +34,7 @@ export interface Logger {
    * The logger with the supercategory of the current logger.  If the current
    * logger is the root logger, this is `null`.
    */
-  readonly parent: Logger | null;
+  readonly parent: Logger<P> | null;
 
   /**
    * Get a child logger with the given subcategory.
@@ -64,7 +64,7 @@ export interface Logger {
    * @param subcategory The subcategory.
    * @returns The child logger.
    */
-  getChild(subcategory: MaybeCategory): Logger;
+  getChild(subcategory: MaybeCategory): Logger<P>;
 
   /**
    * Get a logger with contextual properties.  This is useful for
@@ -92,7 +92,7 @@ export interface Logger {
    * @returns
    * @since 0.5.0
    */
-  with(properties: Record<string, unknown>): Logger;
+  with(properties: P): Logger<P>;
 
   /**
    * Log a log message with properties.
@@ -123,7 +123,7 @@ export interface Logger {
   log(
     level: LogLevel,
     message: string,
-    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+    properties?: P | (() => P),
   ): void;
 
   /**
@@ -178,7 +178,7 @@ export interface Logger {
    */
   debug(
     message: string,
-    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+    properties?: P | (() => P),
   ): void;
 
   /**
@@ -232,7 +232,7 @@ export interface Logger {
    */
   info(
     message: string,
-    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+    properties?: P | (() => P),
   ): void;
 
   /**
@@ -287,7 +287,7 @@ export interface Logger {
    */
   warn(
     message: string,
-    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+    properties?: P | (() => P),
   ): void;
 
   /**
@@ -342,7 +342,7 @@ export interface Logger {
    */
   error(
     message: string,
-    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+    properties?: P | (() => P),
   ): void;
 
   /**
@@ -397,7 +397,7 @@ export interface Logger {
    */
   critical(
     message: string,
-    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+    properties?: P | (() => P),
   ): void;
 
   /**
@@ -452,7 +452,7 @@ export interface Logger {
    */
   fatal(
     message: string,
-    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+    properties?: P | (() => P),
   ): void;
 
   /**

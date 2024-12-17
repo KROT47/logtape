@@ -19,56 +19,59 @@ import type { GlobalRootLoggerRegistry, LogCallback, Logger } from "./types.ts";
  * A logger implementation.  Do not use this directly; use {@link getLogger}
  * instead.  This class is exported for testing purposes.
  */
-export class LoggerImpl implements Logger {
-  readonly children: Record<string, LoggerImpl | WeakRef<LoggerImpl>> = {};
-  readonly sinks: Sink[] = [];
+export class LoggerImpl<P> implements Logger<P> {
+  readonly children: Record<string, LoggerImpl<P> | WeakRef<LoggerImpl<P>>> =
+    {};
+  readonly sinks: Sink<P>[] = [];
   parentSinks: "inherit" | "override" = "inherit";
   readonly filters: Filter[] = [];
-  readonly propTransformers: PropertiesTransformer[] = [];
-  readonly properties?: Record<string, unknown> | undefined;
+  readonly propTransformers: PropertiesTransformer<P>[] = [];
+  readonly properties?: P;
 
-  static getLogger(category: Category = []): LoggerImpl {
-    let rootLogger: LoggerImpl | null = globalRootLoggerSymbol in globalThis
-      ? ((globalThis as GlobalRootLoggerRegistry)[globalRootLoggerSymbol] ??
+  static getLogger<P>(category: Category = []): LoggerImpl<P> {
+    let rootLogger: LoggerImpl<P> | null = globalRootLoggerSymbol in globalThis
+      ? (((globalThis as GlobalRootLoggerRegistry)[
+        globalRootLoggerSymbol
+      ] as LoggerImpl<P>) ??
         null)
       : null;
     if (rootLogger == null) {
-      rootLogger = new LoggerImpl(null, []);
+      rootLogger = new LoggerImpl<P>(null, []);
       (globalThis as GlobalRootLoggerRegistry)[globalRootLoggerSymbol] =
-        rootLogger;
+        rootLogger as LoggerImpl<unknown>;
     }
     if (category.length === 0) return rootLogger;
     return rootLogger.getChild(category);
   }
 
   constructor(
-    readonly parent: LoggerImpl | null,
+    readonly parent: LoggerImpl<P> | null,
     readonly category: CategoryList,
-    properties?: Record<string, unknown>,
+    properties?: P,
   ) {
-    this.properties = mergeProperties(
-      parent?.properties,
-      properties,
+    this.properties = mergeProperties<P>(
+      parent?.properties as P,
+      properties as P,
     );
   }
 
   getChild(
     subcategory: MaybeCategory,
-    properties?: Record<string, unknown>,
-  ): LoggerImpl {
+    properties?: P,
+  ): LoggerImpl<P> {
     if (!subcategory) {
       return properties ? this.with(properties) : this;
     }
     const subcategoryList = getCategoryList(subcategory);
     const name = subcategoryList[0];
     const childRef = name ? this.children[name] : undefined;
-    let child: LoggerImpl | undefined = childRef instanceof LoggerImpl
+    let child: LoggerImpl<P> | undefined = childRef instanceof LoggerImpl
       ? childRef
       : childRef?.deref();
     if (!name) {
       child = this;
     } else if (child == null) {
-      child = new LoggerImpl(this, [...this.category, name]);
+      child = new LoggerImpl<P>(this, [...this.category, name]);
       this.children[name] = "WeakRef" in globalThis
         ? new WeakRef(child)
         : child;
@@ -101,7 +104,7 @@ export class LoggerImpl implements Logger {
     this.reset();
   }
 
-  with(properties: Record<string, unknown>): LoggerImpl {
+  with(properties: P): LoggerImpl<P> {
     return new LoggerImpl(this, this.category, properties);
   }
 
@@ -113,9 +116,10 @@ export class LoggerImpl implements Logger {
     return true;
   }
 
-  propTransform(rawRecord: RawLogRecord): LogRecord["properties"] {
+  propTransform(rawRecord: RawLogRecord<P>): P | undefined {
     if (this.propTransformers.length < 1) {
-      return this.parent?.propTransform(rawRecord) ?? rawRecord.properties;
+      return (this.parent?.propTransform(rawRecord) ??
+        rawRecord.properties) as P;
     }
     let resultRecord = rawRecord;
     for (const propTransform of this.propTransformers) {
@@ -127,14 +131,14 @@ export class LoggerImpl implements Logger {
     return resultRecord.properties;
   }
 
-  *getSinks(): Iterable<Sink> {
+  *getSinks(): Iterable<Sink<P>> {
     if (this.parent != null && this.parentSinks === "inherit") {
       for (const sink of this.parent.getSinks()) yield sink;
     }
     for (const sink of this.sinks) yield sink;
   }
 
-  emit(record: LogRecord, bypassSinks?: Set<Sink>): void {
+  emit(record: LogRecord<P>, bypassSinks?: Set<Sink<any>>): void {
     if (!this.filter(record)) return;
     for (const sink of this.getSinks()) {
       if (bypassSinks?.has(sink)) continue;
@@ -157,8 +161,8 @@ export class LoggerImpl implements Logger {
     level: LogLevel,
     rawMessage: string,
     properties:
-      | Record<string, unknown>
-      | (() => Record<string, unknown>)
+      | P
+      | (() => P)
       | undefined,
     bypassSinks?: Set<Sink>,
   ): void {
@@ -173,14 +177,18 @@ export class LoggerImpl implements Logger {
       return (
         this.propTransform({
           ...baseRecord,
-          properties: mergeProperties(
+          properties: mergeProperties<P>(
             this.properties,
-            typeof properties === "function" ? properties() : properties,
+            typeof properties === "function"
+              // deno-lint-ignore ban-ts-comment
+              // @ts-ignore
+              ? properties()
+              : properties,
           ),
         })
       );
     };
-    const record: LogRecord = {
+    const record: LogRecord<P> = {
       ...baseRecord,
       get properties() {
         const value = getProperties();
@@ -194,7 +202,7 @@ export class LoggerImpl implements Logger {
   logLazily(
     level: LogLevel,
     callback: LogCallback,
-    properties: Record<string, unknown> = {},
+    properties?: P,
   ): void {
     function realizeMessage(
       this: LogRecord,
@@ -231,7 +239,7 @@ export class LoggerImpl implements Logger {
     level: LogLevel,
     messageTemplate: TemplateStringsArray,
     values: unknown[],
-    properties: Record<string, unknown> = {},
+    properties?: P,
   ): void {
     this.emit({
       category: this.category,
@@ -249,7 +257,7 @@ export class LoggerImpl implements Logger {
     ...values: unknown[]
   ): void {
     if (typeof message === "string") {
-      this._log(level, message, values[0] as Record<string, unknown>);
+      this._log(level, message, values[0] as P);
     } else if (typeof message === "function") {
       this.logLazily(level, message);
     } else {
@@ -324,14 +332,14 @@ export function renderMessage(
   return args;
 }
 
-export function isLogger(obj: unknown): obj is Logger {
+export function isLogger<P>(obj: unknown): obj is Logger<P> {
   return !!obj && obj?.constructor.name === LoggerImpl.name;
 }
 
-function mergeProperties(
-  defaultProperties: Record<string, unknown> | undefined,
-  properties: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
+function mergeProperties<P>(
+  defaultProperties: P | undefined,
+  properties: P | undefined,
+): P | undefined {
   return defaultProperties && properties
     ? { ...defaultProperties, ...properties }
     : (defaultProperties ?? properties);

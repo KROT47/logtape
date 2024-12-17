@@ -4,7 +4,7 @@ import type { LogLevel } from "./level.ts";
 /**
  * A log record.
  */
-export interface LogRecord {
+export interface LogRecord<P = unknown> {
   /**
    * The category of the logger that produced the log record.
    */
@@ -46,5 +46,5 @@ export interface LogRecord {
   /**
    * The extra properties of the log record.
    */
-  readonly properties: Record<string, unknown> | undefined;
+  readonly properties: P | undefined;
 }

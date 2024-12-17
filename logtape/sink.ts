@@ -18,7 +18,7 @@ import type { LogRecord } from "./record.ts";
  *
  * @param record The log record to sink.
  */
-export type Sink = (record: LogRecord) => void;
+export type Sink<P = unknown> = (record: LogRecord<P>) => void;
 
 /**
  * Turns a sink into a filtered sink.  The returned sink only logs records that

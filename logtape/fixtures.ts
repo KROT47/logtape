@@ -1,6 +1,6 @@
 import type { LogRecord } from "./record.ts";
 
-export const info: LogRecord = {
+export const info: LogRecord<object> = {
   level: "info",
   category: ["my-app", "junk"],
   message: ["Hello, ", 123, " & ", 456, "!"],
@@ -9,17 +9,17 @@ export const info: LogRecord = {
   properties: {},
 };
 
-export const debug: LogRecord = {
+export const debug: LogRecord<object> = {
   ...info,
   level: "debug",
 };
 
-export const warning: LogRecord = {
+export const warning: LogRecord<object> = {
   ...info,
   level: "warning",
 };
 
-export const error: LogRecord = {
+export const error: LogRecord<object> = {
   ...info,
   level: "error",
 };
