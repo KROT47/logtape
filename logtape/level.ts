@@ -1,7 +1,13 @@
 /**
  * The severity level of a {@link LogRecord}.
  */
-export type LogLevel = "debug" | "info" | "warning" | "error" | "fatal";
+export type LogLevel =
+  | "debug"
+  | "info"
+  | "warning"
+  | "error"
+  | "critical"
+  | "fatal";
 
 /**
  * Parses a log level from a string.
@@ -17,6 +23,7 @@ export function parseLogLevel(level: string): LogLevel {
     case "info":
     case "warning":
     case "error":
+    case "critical":
     case "fatal":
       return level;
     default:
@@ -37,6 +44,7 @@ export function isLogLevel(level: string): level is LogLevel {
     case "info":
     case "warning":
     case "error":
+    case "critical":
     case "fatal":
       return true;
     default:

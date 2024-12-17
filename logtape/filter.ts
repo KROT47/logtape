@@ -27,6 +27,15 @@ export function toFilter(filter: FilterLike): Filter {
   return getLevelFilter(filter);
 }
 
+const levelsOrder = [
+  "fatal",
+  "critical",
+  "error",
+  "warning",
+  "info",
+  "debug",
+];
+
 /**
  * Returns a filter that accepts log records with the specified level.
  *
@@ -36,22 +45,22 @@ export function toFilter(filter: FilterLike): Filter {
  */
 export function getLevelFilter(level: LogLevel | null): Filter {
   if (level == null) return () => false;
-  if (level === "fatal") {
-    return (record: LogRecord) => record.level === "fatal";
-  } else if (level === "error") {
-    return (record: LogRecord) =>
-      record.level === "fatal" || record.level === "error";
-  } else if (level === "warning") {
-    return (record: LogRecord) =>
-      record.level === "fatal" ||
-      record.level === "error" ||
-      record.level === "warning";
-  } else if (level === "info") {
-    return (record: LogRecord) =>
-      record.level === "fatal" ||
-      record.level === "error" ||
-      record.level === "warning" ||
-      record.level === "info";
-  } else if (level === "debug") return () => true;
-  throw new TypeError(`Invalid log level: ${level}.`);
+  if (level === "debug") return () => true;
+
+  const levelIndex = getLevelIndex(level);
+
+  return (record: LogRecord) => {
+    const recordLevelIndex = getLevelIndex(record.level);
+    return levelIndex >= recordLevelIndex;
+  };
+}
+
+const levelsOrderMap = new Map(
+  levelsOrder.map((level, index) => [level, index]),
+);
+
+function getLevelIndex(level: LogLevel): number {
+  const index = levelsOrderMap.get(level);
+  if (index === undefined) throw new TypeError(`Invalid log level: ${level}.`);
+  return index;
 }

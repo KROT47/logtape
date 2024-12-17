@@ -23,6 +23,7 @@ import type { Sink } from "./sink.ts";
  * logger.info `An info message with ${value}.`;
  * logger.warn `A warning message with ${value}.`;
  * logger.error `An error message with ${value}.`;
+ * logger.critical `A critical error message with ${value}.`;
  * logger.fatal `A fatal error message with ${value}.`;
  * ```
  */
@@ -360,6 +361,61 @@ export interface Logger {
    * @throws {TypeError} If no log record was made inside the callback.
    */
   error(callback: LogCallback): void;
+
+  /**
+   * Log a critical error message.  Use this as a template string prefix.
+   *
+   * ```typescript
+   * logger.critical `A critical error message with ${value}.`;
+   * ```
+   *
+   * @param message The message template strings array.
+   * @param values The message template values.
+   */
+  critical(message: TemplateStringsArray, ...values: readonly unknown[]): void;
+
+  /**
+   * Log a critical error message with properties.
+   *
+   * ```typescript
+   * logger.warn('A critical error message with {value}.', { value });
+   * ```
+   *
+   * If the properties are expensive to compute, you can pass a callback that
+   * returns the properties:
+   *
+   * ```typescript
+   * logger.critical(
+   *   'A critical error message with {value}.',
+   *   () => ({ value: expensiveComputation() })
+   * );
+   * ```
+   *
+   * @param message The message template.  Placeholders to be replaced with
+   *                `values` are indicated by keys in curly braces (e.g.,
+   *                `{value}`).
+   * @param properties The values to replace placeholders with.  For lazy
+   *                   evaluation, this can be a callback that returns the
+   *                   properties.
+   */
+  critical(
+    message: string,
+    properties?: Record<string, unknown> | (() => Record<string, unknown>),
+  ): void;
+
+  /**
+   * Lazily log a critical error message.  Use this when the message values are
+   * expensive to compute and should only be computed if the message is actually
+   * logged.
+   *
+   * ```typescript
+   * logger.critical(l => l`A critical error message with ${expensiveValue()}.`);
+   * ```
+   *
+   * @param callback A callback that returns the message template prefix.
+   * @throws {TypeError} If no log record was made inside the callback.
+   */
+  critical(callback: LogCallback): void;
 
   /**
    * Log a fatal error message.  Use this as a template string prefix.
@@ -725,6 +781,13 @@ export class LoggerImpl implements Logger {
     this.log("error", message, ...values);
   }
 
+  critical(
+    message: TemplateStringsArray | string | LogCallback,
+    ...values: unknown[]
+  ): void {
+    this.log("critical", message, ...values);
+  }
+
   fatal(
     message: TemplateStringsArray | string | LogCallback,
     ...values: unknown[]
@@ -836,6 +899,13 @@ export class LoggerCtx implements Logger {
     ...values: unknown[]
   ): void {
     this.log("error", message, ...values);
+  }
+
+  critical(
+    message: TemplateStringsArray | string | LogCallback,
+    ...values: unknown[]
+  ): void {
+    this.log("critical", message, ...values);
   }
 
   fatal(

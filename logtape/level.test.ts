@@ -9,11 +9,13 @@ Deno.test("parseLogLevel()", () => {
   assertEquals(parseLogLevel("info"), "info");
   assertEquals(parseLogLevel("warning"), "warning");
   assertEquals(parseLogLevel("error"), "error");
+  assertEquals(parseLogLevel("critical"), "critical");
   assertEquals(parseLogLevel("fatal"), "fatal");
   assertEquals(parseLogLevel("DEBUG"), "debug");
   assertEquals(parseLogLevel("INFO"), "info");
   assertEquals(parseLogLevel("WARNING"), "warning");
   assertEquals(parseLogLevel("ERROR"), "error");
+  assertEquals(parseLogLevel("CRITICAL"), "critical");
   assertEquals(parseLogLevel("FATAL"), "fatal");
   assertThrows(
     () => parseLogLevel("invalid"),
@@ -27,6 +29,7 @@ Deno.test("isLogLevel()", () => {
   assert(isLogLevel("info"));
   assert(isLogLevel("warning"));
   assert(isLogLevel("error"));
+  assert(isLogLevel("critical"));
   assert(isLogLevel("fatal"));
   assertFalse(isLogLevel("DEBUG"));
   assertFalse(isLogLevel("invalid"));

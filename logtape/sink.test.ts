@@ -3,7 +3,7 @@ import { assertThrows } from "@std/assert/assert-throws";
 import makeConsoleMock from "consolemock";
 import fs from "node:fs";
 import { isDeno } from "which_runtime";
-import { debug, error, fatal, info, warning } from "./fixtures.ts";
+import { critical, debug, error, fatal, info, warning } from "./fixtures.ts";
 import { defaultTextFormatter, timezoneOffset } from "./formatter.ts";
 import type { LogLevel } from "./level.ts";
 import type { LogRecord } from "./record.ts";
@@ -23,8 +23,9 @@ Deno.test("withFilter()", () => {
   sink(info);
   sink(warning);
   sink(error);
+  sink(critical);
   sink(fatal);
-  assertEquals(buffer, [warning, error, fatal]);
+  assertEquals(buffer, [warning, error, critical, fatal]);
 });
 
 Deno.test("withFilter()", () => {
@@ -34,8 +35,9 @@ Deno.test("withFilter()", () => {
   sink(info);
   sink(warning);
   sink(error);
+  sink(critical);
   sink(fatal);
-  assertEquals(buffer, [warning, error, fatal]);
+  assertEquals(buffer, [warning, error, critical, fatal]);
 });
 
 interface ConsoleMock extends Console {
@@ -57,6 +59,7 @@ Deno.test("getStreamSink()", async () => {
   sink(info);
   sink(warning);
   sink(error);
+  sink(critical);
   sink(fatal);
   await sink[Symbol.asyncDispose]();
   assertEquals(
@@ -66,6 +69,7 @@ Deno.test("getStreamSink()", async () => {
 2023-11-14 22:13:20.000 ${timezoneOffset} [INF] my-app·junk: Hello, 123 & 456!
 2023-11-14 22:13:20.000 ${timezoneOffset} [WRN] my-app·junk: Hello, 123 & 456!
 2023-11-14 22:13:20.000 ${timezoneOffset} [ERR] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [CRT] my-app·junk: Hello, 123 & 456!
 2023-11-14 22:13:20.000 ${timezoneOffset} [FTL] my-app·junk: Hello, 123 & 456!
 `,
   );
@@ -79,6 +83,7 @@ Deno.test("getConsoleSink()", () => {
   sink(info);
   sink(warning);
   sink(error);
+  sink(critical);
   sink(fatal);
   assertEquals(mock.history(), [
     {
@@ -135,6 +140,19 @@ Deno.test("getConsoleSink()", () => {
     },
     {
       ERROR: [
+        "%c22:13:20.000 %cCRT%c %cmy-app·junk %cHello, %o & %o!",
+        "color: gray;",
+        "background-color: darkred; color: white;",
+        "background-color: default;",
+        "color: gray;",
+        "color: default;",
+        123,
+        456,
+        "",
+      ],
+    },
+    {
+      ERROR: [
         "%c22:13:20.000 %cFTL%c %cmy-app·junk %cHello, %o & %o!",
         "color: gray;",
         "background-color: maroon; color: white;",
@@ -164,6 +182,7 @@ Deno.test("getConsoleSink()", () => {
   sink2(info);
   sink2(warning);
   sink2(error);
+  sink2(critical);
   sink2(fatal);
   assertEquals(mock2.history(), [
     {
@@ -184,6 +203,11 @@ Deno.test("getConsoleSink()", () => {
     {
       ERROR: [
         `2023-11-14 22:13:20.000 ${timezoneOffset} [ERR] my-app·junk: Hello, 123 & 456!`,
+      ],
+    },
+    {
+      ERROR: [
+        `2023-11-14 22:13:20.000 ${timezoneOffset} [CRT] my-app·junk: Hello, 123 & 456!`,
       ],
     },
     {
@@ -228,6 +252,7 @@ Deno.test("getFileSink()", () => {
   sink(info);
   sink(warning);
   sink(error);
+  sink(critical);
   sink(fatal);
   sink[Symbol.dispose]();
   assertEquals(
@@ -237,6 +262,7 @@ Deno.test("getFileSink()", () => {
 2023-11-14 22:13:20.000 ${timezoneOffset} [INF] my-app·junk: Hello, 123 & 456!
 2023-11-14 22:13:20.000 ${timezoneOffset} [WRN] my-app·junk: Hello, 123 & 456!
 2023-11-14 22:13:20.000 ${timezoneOffset} [ERR] my-app·junk: Hello, 123 & 456!
+2023-11-14 22:13:20.000 ${timezoneOffset} [CRT] my-app·junk: Hello, 123 & 456!
 2023-11-14 22:13:20.000 ${timezoneOffset} [FTL] my-app·junk: Hello, 123 & 456!
 `,
   );

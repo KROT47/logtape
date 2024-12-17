@@ -6,6 +6,7 @@ import {
   getDefaultConsoleFormatter,
   type TextFormatter,
 } from "./formatter.ts";
+import type { LogLevel } from "./mod.ts";
 import type { LogRecord } from "./record.ts";
 
 /**
@@ -116,6 +117,18 @@ export interface ConsoleSinkOptions extends BaseFormatterOptions {
   console?: Console;
 }
 
+const levelToConsoleMethodNameMap = new Map<
+  LogLevel,
+  "debug" | "info" | "warn" | "error"
+>([
+  ["debug", "debug"],
+  ["info", "info"],
+  ["warning", "warn"],
+  ["error", "error"],
+  ["critical", "error"],
+  ["fatal", "error"],
+]);
+
 /**
  * A console sink factory that returns a sink that logs to the console.
  *
@@ -127,21 +140,18 @@ export function getConsoleSink(options: ConsoleSinkOptions = {}): Sink {
   const console = options.console ?? globalThis.console;
   return (record: LogRecord) => {
     const args = formatter(record);
+    const { level } = record;
+    const methodName = levelToConsoleMethodNameMap.get(level);
+    if (!methodName) {
+      throw new TypeError(`Invalid log level: ${level}.`);
+    }
+    const consoleMethod = console[methodName];
+
     if (typeof args === "string") {
       const msg = args.replace(/\r?\n$/, "");
-      if (record.level === "debug") console.debug(msg);
-      else if (record.level === "info") console.info(msg);
-      else if (record.level === "warning") console.warn(msg);
-      else if (record.level === "error" || record.level === "fatal") {
-        console.error(msg);
-      } else throw new TypeError(`Invalid log level: ${record.level}.`);
+      consoleMethod(msg);
     } else {
-      if (record.level === "debug") console.debug(...args);
-      else if (record.level === "info") console.info(...args);
-      else if (record.level === "warning") console.warn(...args);
-      else if (record.level === "error" || record.level === "fatal") {
-        console.error(...args);
-      } else throw new TypeError(`Invalid log level: ${record.level}.`);
+      consoleMethod(...args);
     }
   };
 }

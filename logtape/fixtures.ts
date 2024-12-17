@@ -24,6 +24,11 @@ export const error: LogRecord = {
   level: "error",
 };
 
+export const critical: LogRecord = {
+  ...info,
+  level: "critical",
+};
+
 export const fatal: LogRecord = {
   ...info,
   level: "fatal",

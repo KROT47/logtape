@@ -27,4 +27,5 @@ logger.debug("debug", ctx);
 logger.info("info", ctx);
 logger.warn("warn", ctx);
 logger.error("error", ctx);
+logger.critical("critical", ctx);
 logger.fatal("fatal", ctx);

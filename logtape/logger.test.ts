@@ -545,7 +545,14 @@ Deno.test("LoggerCtx.logTemplate()", async (t) => {
   });
 });
 
-const methods = ["debug", "info", "warn", "error", "fatal"] as const;
+const methods = [
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "critical",
+  "fatal",
+] as const;
 for (const method of methods) {
   Deno.test(`Logger.${method}()`, async (t) => {
     const logger = LoggerImpl.getLogger("foo");

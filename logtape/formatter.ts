@@ -21,6 +21,7 @@ const levelAbbreviations: Record<LogLevel, string> = {
   "info": "INF",
   "warning": "WRN",
   "error": "ERR",
+  "critical": "CRT",
   "fatal": "FTL",
 };
 
@@ -330,6 +331,7 @@ export type AnsiColor =
   | "green"
   | "yellow"
   | "blue"
+  | "darkorange"
   | "magenta"
   | "cyan"
   | "white";
@@ -340,6 +342,7 @@ const ansiColors: Record<AnsiColor, string> = {
   green: "\x1b[32m",
   yellow: "\x1b[33m",
   blue: "\x1b[34m",
+  darkorange: "\x1b[38;5;208m",
   magenta: "\x1b[35m",
   cyan: "\x1b[36m",
   white: "\x1b[37m",
@@ -369,6 +372,7 @@ const defaultLevelColors: Record<LogLevel, AnsiColor | null> = {
   info: "green",
   warning: "yellow",
   error: "red",
+  critical: "darkorange",
   fatal: "magenta",
 };
 
@@ -435,6 +439,7 @@ export interface AnsiColorFormatterOptions extends TextFormatterOptions {
    * - `"info"`: `"green"`
    * - `"warning"`: `"yellow"`
    * - `"error"`: `"red"`
+   * - `"critical"`: `"darkorange"`
    * - `"fatal"`: `"magenta"`
    */
   levelColors?: Record<LogLevel, AnsiColor | null>;
@@ -559,6 +564,7 @@ const logLevelStyles: Record<LogLevel, string> = {
   "info": "background-color: white; color: black;",
   "warning": "background-color: orange; color: black;",
   "error": "background-color: red; color: white;",
+  "critical": "background-color: darkred; color: white;",
   "fatal": "background-color: maroon; color: white;",
 };
 
