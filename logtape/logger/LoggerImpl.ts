@@ -19,7 +19,7 @@ import type { GlobalRootLoggerRegistry, LogCallback, Logger } from "./types.ts";
  * A logger implementation.  Do not use this directly; use {@link getLogger}
  * instead.  This class is exported for testing purposes.
  */
-export class LoggerImpl<P> implements Logger<P> {
+export class LoggerImpl<P = unknown> implements Logger<P> {
   readonly children: Record<string, LoggerImpl<P> | WeakRef<LoggerImpl<P>>> =
     {};
   readonly sinks: Sink<P>[] = [];
@@ -138,7 +138,11 @@ export class LoggerImpl<P> implements Logger<P> {
     for (const sink of this.sinks) yield sink;
   }
 
-  emit(record: LogRecord<P>, bypassSinks?: Set<Sink<any>>): void {
+  emit(
+    record: LogRecord<P>,
+    // deno-lint-ignore no-explicit-any
+    bypassSinks?: Set<Sink<any>>,
+  ): void {
     if (!this.filter(record)) return;
     for (const sink of this.getSinks()) {
       if (bypassSinks?.has(sink)) continue;

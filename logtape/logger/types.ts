@@ -24,7 +24,7 @@ export interface GlobalRootLoggerRegistry {
  * logger.fatal `A fatal error message with ${value}.`;
  * ```
  */
-export interface Logger<P> {
+export interface Logger<P = unknown> {
   /**
    * The category of the logger.  It is an array of strings.
    */
