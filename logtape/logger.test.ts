@@ -6,7 +6,7 @@ import { assertLessOrEqual } from "@std/assert/assert-less-or-equal";
 import { assertStrictEquals } from "@std/assert/assert-strict-equals";
 import { toFilter } from "./filter.ts";
 import { debug, error, info, warning } from "./fixtures.ts";
-import { getLogger, LoggerImpl, renderMessage } from "./logger.ts";
+import { getLogger, LoggerImpl, renderMessage } from "./logger/index.ts";
 import type { LogRecord } from "./record.ts";
 import type { Sink } from "./sink.ts";
 

@@ -9,7 +9,7 @@ import {
   reset,
 } from "./config.ts";
 import { type Filter, type FilterLike, toFilter } from "./filter.ts";
-import { LoggerImpl } from "./logger.ts";
+import { LoggerImpl } from "./logger/index.ts";
 import type { PropertiesTransformer } from "./propertiesTransformer.ts";
 import type { LogRecord } from "./record.ts";
 import type { Sink } from "./sink.ts";

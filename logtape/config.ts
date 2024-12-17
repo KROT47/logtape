@@ -2,7 +2,7 @@ import type { Category } from "./category.ts";
 import { metaLoggerCategory } from "./constants.ts";
 import { type FilterLike, toFilter } from "./filter.ts";
 import type { LogLevel } from "./level.ts";
-import { LoggerImpl } from "./logger.ts";
+import { LoggerImpl } from "./logger/index.ts";
 import type { PropertiesTransformer } from "./propertiesTransformer.ts";
 import { getConsoleSink, type Sink } from "./sink.ts";
 

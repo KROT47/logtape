@@ -1,5 +1,5 @@
 import { configure } from "./config.ts";
-import { getLogger } from "./logger.ts";
+import { getLogger } from "./logger/index.ts";
 import { getAnsiColorFormatter } from "./mod.ts";
 import { getConsoleSink } from "./sink.ts";
 
