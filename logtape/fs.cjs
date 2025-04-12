@@ -1,7 +1,8 @@
 let fs = null;
 if (
-  "process" in globalThis && "versions" in globalThis.process &&
-    "node" in globalThis.process.versions &&
+  isDefined(globalThis, "process") &&
+    isDefined(globalThis.process, "versions") &&
+    isDefined(globalThis.process.versions, 'node') &&
     typeof globalThis.caches === "undefined" &&
     typeof globalThis.addEventListener !== "function" ||
   "Bun" in globalThis
@@ -16,3 +17,7 @@ if (
 }
 
 module.exports = fs;
+
+function isDefined(obj, key) {
+  return !!obj && (key in obj) && !!obj[key];
+}
